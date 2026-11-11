@@ -77,7 +77,7 @@
                                     <p class="mt-1 text-sm" style="color: var(--theme-muted-text-color);">{{ __('Distinct networks connected here') }}</p>
                                 </div>
                                 <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style="background: rgba(var(--theme-warning-color-rgb), 0.12); color: var(--theme-warning-color);">
-                                    <i class="fa-solid fa-grid-2-plus"></i>
+                                    <i class="fa-solid fa-layer-group"></i>
                                 </span>
                             </div>
                         </x-ui.card>
@@ -134,7 +134,7 @@
                             <p class="mt-1 text-sm leading-6" style="color: var(--theme-muted-text-color);">{{ __('Where your connected channels are concentrated right now.') }}</p>
                         </div>
                         <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style="background: rgba(var(--theme-accent-rgb), 0.10); color: var(--theme-accent-color);">
-                            <i class="fa-solid fa-chart-simple-horizontal"></i>
+                            <i class="fa-solid fa-chart-simple"></i>
                         </span>
                     </div>
 

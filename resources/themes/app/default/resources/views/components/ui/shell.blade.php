@@ -4,9 +4,27 @@
     'fullWorkspace' => false,
     'fullWorkspacePaddingBottom' => true,
     'showLoadingBackdrop' => true,
+    'hideSidebar' => false,
 ])
 
 @php
+    $hideSidebar = (bool) $hideSidebar;
+
+    if (request()->routeIs(
+        'portal.agents.*',
+        'portal.main',
+        'portal.main.*',
+        'portal.dashboard',
+        'portal.dashboard.*',
+        'portal.publishing.*',
+        'portal.channels',
+        'portal.channels.*',
+        'dashboard',
+        'dashboard.*',
+    )) {
+        $hideSidebar = false;
+    }
+
     $isBoxedLayout = theme_setting('layout_width', 'app', 'full') === 'boxed';
     $sidebarMobileIcons = [
         'dashboard' => 'fa-solid fa-house',
@@ -35,13 +53,27 @@
     $headerItemsPrimaryNav = header_items($shellArea, 'primary-nav');
     $headerItemsCenter = header_items($shellArea, 'center');
     $headerItemsEnd = header_items($shellArea, 'end');
+    $onAgencyOnboarding = request()->routeIs('portal.onboarding', 'portal.onboarding.*');
     $dashboardSwitch = $shellArea === 'user'
-        ? (auth()->user()?->canAccessAdmin() ? ['label' => 'Admin Dashboard', 'route' => route('dashboard')] : null)
+        ? ((! $onAgencyOnboarding && auth()->user()?->canAccessAdmin())
+            ? ['label' => 'Admin Dashboard', 'route' => route('dashboard')]
+            : null)
         : ['label' => 'User Dashboard', 'route' => route('portal.dashboard')];
     $sidebarHomeRoute = $shellArea === 'user'
-        ? route('portal.dashboard')
+        ? (auth()->check()
+            && class_exists(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)
+            && app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)->isComplete(auth()->user())
+            && \Illuminate\Support\Facades\Route::has('portal.main')
+            ? route('portal.main')
+            : route('portal.dashboard'))
         : route('dashboard');
-    $sidebarPlanCard = null;
+    $agencyProjectContext = null;
+
+    if ($shellArea === 'user' && auth()->check() && ! $onAgencyOnboarding && class_exists(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)) {
+        $agencyProjectContext = app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)
+            ->sidebarProjectContext(auth()->user());
+    }
+
     $impersonatorId = session('impersonator_id');
     $impersonatorName = session('impersonator_name');
     $isImpersonating = filled($impersonatorId);
@@ -49,25 +81,6 @@
     $headerCurrentWorkspaceTeam = null;
 
     if ($shellArea === 'user' && auth()->check()) {
-        $sidebarUser = auth()->user();
-        $sidebarCreditSummary = $sidebarUser?->creditSummary() ?? ['limit' => null, 'used' => 0, 'remaining' => null, 'unlimited' => true];
-        $sidebarCreditLimit = is_numeric($sidebarCreditSummary['limit'] ?? null) ? max(0, (int) $sidebarCreditSummary['limit']) : null;
-        $sidebarCreditsUsed = max(0, (int) ($sidebarCreditSummary['used'] ?? 0));
-        $sidebarCreditsUsedPercent = $sidebarCreditLimit && $sidebarCreditLimit > 0
-            ? min(100, (int) round(($sidebarCreditsUsed / $sidebarCreditLimit) * 100))
-            : null;
-        $sidebarPlanCard = [
-            'name' => $sidebarUser?->plan?->name ?: __('No plan assigned'),
-            'badge' => $sidebarUser?->isInPlanTrial() ? __('Trial') : ($sidebarUser?->hasActivePlan() ? __('Active') : __('Inactive')),
-            'badge_tone' => $sidebarUser?->hasActivePlan() ? 'success' : 'neutral',
-            'expiry' => (($sidebarUser?->isInPlanTrial() ? $sidebarUser?->trialEndsAt() : $sidebarUser?->plan_expires_at)?->format('Y-m-d')) ?: __('Unlimited'),
-            'unlimited' => (bool) ($sidebarCreditSummary['unlimited'] ?? false),
-            'credits_used_label' => number_format($sidebarCreditsUsed),
-            'credits_limit_label' => $sidebarCreditLimit !== null ? number_format($sidebarCreditLimit) : __('Unlimited'),
-            'credits_percent' => $sidebarCreditsUsedPercent,
-            'details_route' => route('portal.packages'),
-        ];
-
         $headerWorkspaceTeams = \Modules\AdminUser\Models\Team::query()
             ->where(function ($query): void {
                 $query->where('owner_user_id', (int) auth()->id())
@@ -807,6 +820,7 @@
                 </template>
             </div>
 
+            @unless ($hideSidebar)
             <x-layout.sidebar :sections="$sidebarSections" :home-href="$sidebarHomeRoute">
                 <x-slot:footer>
                     <div class="space-y-3">
@@ -830,62 +844,31 @@
                                 </span>
                             </x-ui.button>
                         @endif
-
-                        @if ($sidebarPlanCard)
-                            <div
-                                x-cloak
-                                x-show="sidebarContentVisible"
-                                x-transition:enter="transition ease-out duration-180"
-                                x-transition:enter-start="opacity-0 translate-y-1"
-                                x-transition:enter-end="opacity-100 translate-y-0"
-                                class="overflow-hidden rounded-[1rem] border px-3 py-3.5 shadow-[0_20px_44px_-30px_rgba(15,23,42,0.28)]"
-                                style="border-color: color-mix(in srgb, var(--theme-border-color) 74%, transparent 26%); background: linear-gradient(180deg, color-mix(in srgb, var(--theme-accent,#2563eb) 6%, var(--theme-surface-base) 94%) 0%, var(--theme-surface-base) 100%);"
-                            >
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.18em]" style="color: var(--theme-muted-text-color);">{{ __('Your plan') }}</p>
-                                <div class="mt-3 flex items-start justify-between gap-3">
-                                    <div class="min-w-0">
-                                        <p class="truncate text-sm font-semibold" style="color: var(--theme-accent, #2563eb);">
-                                            <i class="fa-solid fa-crown mr-1 text-[11px]"></i>{{ $sidebarPlanCard['name'] }}
-                                        </p>
-                                        <p class="mt-2 flex items-center gap-1 text-xs whitespace-nowrap" style="color: var(--theme-muted-text-color);">
-                                            <span>{{ __('Expire') }}:</span>
-                                            <span class="font-semibold" style="color: var(--theme-header-text-color);">{{ $sidebarPlanCard['expiry'] }}</span>
-                                        </p>
-                                    </div>
-                                    <span class="inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap {{ $sidebarPlanCard['badge_tone'] === 'success' ? 'bg-emerald-400/12 text-emerald-500' : 'bg-slate-400/10 text-slate-500 dark:text-slate-300' }}">
-                                        {{ $sidebarPlanCard['badge'] }}
-                                    </span>
-                                </div>
-
-                                <div class="mt-4">
-                                    <div class="flex items-center justify-between gap-3 text-xs font-semibold">
-                                        <span style="color: var(--theme-muted-text-color);">{{ __('Credits used') }}</span>
-                                        <span style="color: var(--theme-header-text-color);">{{ $sidebarPlanCard['credits_used_label'] }} / {{ $sidebarPlanCard['credits_limit_label'] }}</span>
-                                    </div>
-                                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800">
-                                        <div
-                                            class="h-full rounded-full"
-                                            style="width: {{ $sidebarPlanCard['unlimited'] ? 100 : ($sidebarPlanCard['credits_percent'] ?? 0) }}%; background: linear-gradient(90deg, var(--theme-accent,#2563eb) 0%, color-mix(in srgb, var(--theme-accent,#2563eb) 72%, #8b5cf6 28%) 100%);"
-                                        ></div>
-                                    </div>
-                                </div>
-
-                                <x-ui.button href="{{ $sidebarPlanCard['details_route'] }}" class="mt-4 w-full justify-center" size="sm" wire:navigate>
-                                    {{ __('Upgrade / Details') }}
-                                </x-ui.button>
-                            </div>
-                        @endif
                     </div>
                 </x-slot:footer>
             </x-layout.sidebar>
+            @endunless
 
-            <div class="transition-[padding] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] lg:pl-[14.75rem]" x-bind:class="sidebarCollapsed ? 'lg:pl-[70px]' : 'lg:pl-[14.75rem]'">
+            <div
+                @class([
+                    'transition-[padding] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)]',
+                    'lg:pl-0' => $hideSidebar,
+                    'lg:pl-[14.75rem]' => ! $hideSidebar,
+                ])
+                @unless ($hideSidebar)
+                    x-bind:class="sidebarCollapsed ? 'lg:pl-[70px]' : 'lg:pl-[14.75rem]'"
+                @endunless
+            >
                 <div
                     x-ref="shellHeader"
                     class="fixed top-0 right-0 z-[120] transition-[left] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
-                    x-bind:style="viewportWidth >= 1024
-                        ? `left: ${sidebarCollapsed ? '70px' : '14.75rem'}`
-                        : 'left: 0px'"
+                    @if ($hideSidebar)
+                        style="left: 0;"
+                    @else
+                        x-bind:style="viewportWidth >= 1024
+                            ? `left: ${sidebarCollapsed ? '70px' : '14.75rem'}`
+                            : 'left: 0px'"
+                    @endif
                 >
                     <x-layout.header
                         :search-placeholder="__('Search workspace')"
@@ -894,16 +877,19 @@
                         :header-items-center="$headerItemsCenter"
                         :header-items-end="$headerItemsEnd"
                         :boxed-layout="$isBoxedLayout"
+                        :agency-project-context="$agencyProjectContext"
                     >
                         <x-slot:start>
-                            <button
-                                type="button"
-                                class="inline-flex h-11 w-11 items-center justify-center rounded-[0.75rem] border border-slate-200 text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 lg:hidden dark:border-slate-800 dark:text-slate-100 dark:hover:border-slate-700 dark:hover:bg-slate-900"
-                                style="background-color: rgba(var(--theme-header-surface-rgb), 0.9); border-color: var(--theme-shell-border-color);"
-                                x-on:click="sidebarOpen = true"
-                            >
-                                <i class="fa-solid fa-bars text-base"></i>
-                            </button>
+                            @unless ($hideSidebar)
+                                <button
+                                    type="button"
+                                    class="inline-flex h-11 w-11 items-center justify-center rounded-[0.75rem] border border-slate-200 text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 lg:hidden dark:border-slate-800 dark:text-slate-100 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+                                    style="background-color: rgba(var(--theme-header-surface-rgb), 0.9); border-color: var(--theme-shell-border-color);"
+                                    x-on:click="sidebarOpen = true"
+                                >
+                                    <i class="fa-solid fa-bars text-base"></i>
+                                </button>
+                            @endunless
                         </x-slot:start>
 
                         <x-slot:end>
@@ -1117,12 +1103,13 @@
                 </main>
             </div>
 
-            <x-layout.mobile-sidebar
-                :sections="$sidebarSections"
-                :dashboard-switch="$dashboardSwitch"
-                :plan-card="$sidebarPlanCard"
-                :home-href="$sidebarHomeRoute"
-            />
+            @unless ($hideSidebar)
+                <x-layout.mobile-sidebar
+                    :sections="$sidebarSections"
+                    :dashboard-switch="$dashboardSwitch"
+                    :home-href="$sidebarHomeRoute"
+                />
+            @endunless
         </div>
         @include(theme_view('partials.embed-code-body', 'app'))
         @livewireScripts

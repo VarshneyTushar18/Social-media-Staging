@@ -87,6 +87,10 @@
             </button>
         </div>
 
+        @if (auth()->check() && view()->exists('appagencyonboarding::components.sidebar-main-dashboard-hub'))
+            @include('appagencyonboarding::components.sidebar-main-dashboard-hub')
+        @endif
+
         <div class="app-sidebar-scroll flex-1 overflow-y-auto px-3 pt-2 pb-2">
             <x-layout.sidebar-menu :sections="$sections" mode="desktop" />
         </div>

@@ -27,3 +27,13 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Local Windows dev (optional — copy php-path.txt.example to php-path.txt)
+/php-path.txt
+/php-path.txt.example
+/artisan-migrate.bat
+/artisan-serve.bat
+/setup-php-laravel.bat
+/scripts/
+Thumbs.db
+Desktop.ini

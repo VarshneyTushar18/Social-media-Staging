@@ -1,0 +1,8 @@
+{
+    "name": "AppAgencyOnboarding",
+    "alias": "appagencyonboarding",
+    "priority": 5,
+    "providers": [
+        "Modules\\AppAgencyOnboarding\\Providers\\AppAgencyOnboardingServiceProvider"
+    ]
+}

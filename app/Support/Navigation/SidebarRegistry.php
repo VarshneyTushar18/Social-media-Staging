@@ -76,6 +76,16 @@ class SidebarRegistry
 
         $resolvedSections = $this->applyOverrides($area, $resolvedSections);
 
+        if ($area === 'user' && class_exists(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)) {
+            $onboarding = app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class);
+            $user = auth()->user();
+
+            $resolvedSections = array_values(array_filter(
+                $resolvedSections,
+                fn (array $section): bool => $onboarding->shouldShowUserSidebarSection((string) ($section['key'] ?? ''), $user),
+            ));
+        }
+
         return array_values(array_filter($resolvedSections, fn (array $section): bool => $section['items'] !== []));
     }
 
@@ -108,7 +118,11 @@ class SidebarRegistry
         $item['key'] = $this->resolveItemKey($item);
 
         if (! isset($item['route']) && isset($item['route_name']) && Route::has($item['route_name'])) {
-            $item['route'] = $this->resolveRouteUrl((string) $item['route_name']).(isset($item['fragment']) ? '#'.ltrim((string) $item['fragment'], '#') : '');
+            $params = (array) ($item['route_params'] ?? []);
+            $path = $params === []
+                ? route((string) $item['route_name'], absolute: false)
+                : route((string) $item['route_name'], $params, absolute: false);
+            $item['route'] = $this->resolveRouteUrl((string) $item['route_name'], $path).(isset($item['fragment']) ? '#'.ltrim((string) $item['fragment'], '#') : '');
         }
 
         $children = $item['children'] ?? [];
@@ -152,15 +166,55 @@ class SidebarRegistry
         $request = request();
 
         if ($request instanceof Request) {
+            $agentKey = (string) ($item['agent_key'] ?? '');
+
             $activeWhen = Arr::wrap($item['active_when'] ?? []);
 
+            if ($agentKey !== '' && class_exists(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)) {
+                $onboarding = app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class);
+
+                if ($onboarding->currentAgentContext() === $agentKey) {
+                    if ($activeWhen !== [] && $request->routeIs(...$activeWhen)) {
+                        if ($this->hasActiveChild($item)) {
+                            return false;
+                        }
+
+                        return true;
+                    }
+
+                    if ($request->routeIs('portal.agents.placeholder')) {
+                        return (string) $request->route('agent') === $agentKey;
+                    }
+                }
+            }
+
             if ($activeWhen !== [] && $request->routeIs(...$activeWhen)) {
-                return true;
+                if ($agentKey !== '' && $request->routeIs('portal.agents.placeholder')) {
+                    return (string) $request->route('agent') === $agentKey;
+                }
+
+                if ($agentKey === '') {
+                    return true;
+                }
+
+                if ($agentKey !== '' && $this->hasActiveChild($item)) {
+                    return false;
+                }
+
+                if ($agentKey !== '') {
+                    return true;
+                }
             }
         }
 
         foreach ($item['children'] ?? [] as $child) {
             if ($this->resolveActive($child)) {
+                $agentKey = (string) ($item['agent_key'] ?? '');
+
+                if ($agentKey !== '') {
+                    return false;
+                }
+
                 return true;
             }
         }
@@ -168,15 +222,27 @@ class SidebarRegistry
         return (bool) ($item['active'] ?? false);
     }
 
-    protected function resolveRouteUrl(string $routeName): string
+    protected function hasActiveChild(array $item): bool
     {
-        $request = request();
-
-        if ($request instanceof Request) {
-            return rtrim($request->getBaseUrl(), '/').route($routeName, absolute: false);
+        foreach ($item['children'] ?? [] as $child) {
+            if ($this->resolveActive($child)) {
+                return true;
+            }
         }
 
-        return route($routeName);
+        return false;
+    }
+
+    protected function resolveRouteUrl(string $routeName, ?string $path = null): string
+    {
+        $request = request();
+        $path ??= route($routeName, absolute: false);
+
+        if ($request instanceof Request) {
+            return rtrim($request->getBaseUrl(), '/').(str_starts_with($path, '/') ? $path : '/'.$path);
+        }
+
+        return url($path);
     }
 
     protected function isVisible(array $item): bool

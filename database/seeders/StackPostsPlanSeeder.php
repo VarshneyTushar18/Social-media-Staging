@@ -25,6 +25,21 @@ class StackPostsPlanSeeder extends Seeder
     {
         return [
             [
+                'name' => 'Free',
+                'slug' => 'free',
+                'status' => true,
+                'featured' => true,
+                'currency' => '$',
+                'price' => 0,
+                'type' => 1,
+                'free_plan' => true,
+                'default_signup_plan' => true,
+                'trial_day' => 0,
+                'position' => 5,
+                'desc' => 'Start with social media management and one agent while you explore the platform.',
+                'permissions' => $this->freePermissions(),
+            ],
+            [
                 'name' => 'Starter Monthly',
                 'slug' => 'starter-monthly',
                 'status' => true,
@@ -153,6 +168,18 @@ class StackPostsPlanSeeder extends Seeder
         ];
     }
 
+    protected function freePermissions(): array
+    {
+        $permissions = $this->starterPermissions();
+        $permissions['agent_social'] = true;
+        $permissions['agent_seo'] = false;
+        $permissions['agent_email'] = false;
+        $permissions['agent_website'] = false;
+        $permissions['max_agents_per_project'] = 1;
+
+        return $permissions;
+    }
+
     protected function starterPermissions(): array
     {
         return [
@@ -193,6 +220,11 @@ class StackPostsPlanSeeder extends Seeder
             'affiliate' => false,
             'rss_schedules' => false,
             'watermark' => false,
+            'agent_social' => true,
+            'agent_seo' => false,
+            'agent_email' => false,
+            'agent_website' => false,
+            'max_agents_per_project' => 1,
         ];
     }
 
@@ -236,6 +268,11 @@ class StackPostsPlanSeeder extends Seeder
             'affiliate' => true,
             'rss_schedules' => true,
             'watermark' => true,
+            'agent_social' => true,
+            'agent_seo' => true,
+            'agent_email' => true,
+            'agent_website' => false,
+            'max_agents_per_project' => 3,
         ];
     }
 
@@ -279,6 +316,11 @@ class StackPostsPlanSeeder extends Seeder
             'affiliate' => true,
             'rss_schedules' => true,
             'watermark' => true,
+            'agent_social' => true,
+            'agent_seo' => true,
+            'agent_email' => true,
+            'agent_website' => true,
+            'max_agents_per_project' => 4,
         ];
     }
 

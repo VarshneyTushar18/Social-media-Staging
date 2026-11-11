@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Modules\AdminUser\Actions\Fortify\CreateNewUser;
 use Modules\AdminUser\Models\User;
+use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 
 class SocialLoginController extends Controller
 {
@@ -88,7 +89,7 @@ class SocialLoginController extends Controller
         $guard->login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->to(\Laravel\Fortify\Fortify::redirects('login') ?? config('fortify.home'));
+        return redirect()->to(app(AgencyOnboarding::class)->postAuthRedirectPath($user));
     }
 
     protected function normalizeProvider(string $provider): string

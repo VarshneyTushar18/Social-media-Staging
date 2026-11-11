@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Modules\AdminUser\Models\User;
+use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 
 #[Title('Log in')]
 class LoginPage extends Component
@@ -99,7 +100,7 @@ class LoginPage extends Component
         if ($this->requiresTwoFactorChallenge($user)) {
             $intendedUrl = request()->session()->get(
                 'url.intended',
-                \Laravel\Fortify\Fortify::redirects('login') ?? config('fortify.home')
+                app(AgencyOnboarding::class)->postAuthRedirectPath($user)
             );
 
             request()->session()->put([
@@ -120,7 +121,7 @@ class LoginPage extends Component
             return $redirect;
         }
 
-        return redirect()->intended(\Laravel\Fortify\Fortify::redirects('login') ?? config('fortify.home'));
+        return redirect()->intended(app(AgencyOnboarding::class)->postAuthRedirectPath($user));
     }
 
     protected function completeIntendedEmailVerification(User $user)
@@ -163,7 +164,7 @@ class LoginPage extends Component
 
         request()->session()->forget('url.intended');
 
-        return redirect()->to(\Laravel\Fortify\Fortify::redirects('login') ?? config('fortify.home'));
+        return redirect()->to(app(AgencyOnboarding::class)->postAuthRedirectPath($user));
     }
 
     protected function hasValidEmailVerificationSignature(string $path, string $query, array $parts): bool

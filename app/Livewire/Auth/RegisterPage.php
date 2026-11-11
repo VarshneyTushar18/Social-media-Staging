@@ -12,6 +12,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Modules\AdminUser\Actions\Fortify\CreateNewUser;
 use Modules\AdminUser\Concerns\ProfileValidationRules;
+use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 
 #[Title('Register')]
 class RegisterPage extends Component
@@ -84,7 +85,7 @@ class RegisterPage extends Component
         Auth::guard(config('fortify.guard'))->login($user);
         request()->session()->regenerate();
 
-        return redirect()->intended(\Laravel\Fortify\Fortify::redirects('register') ?? config('fortify.home'));
+        return redirect()->intended(app(AgencyOnboarding::class)->postAuthRedirectPath($user));
     }
 
     protected function rules(): array

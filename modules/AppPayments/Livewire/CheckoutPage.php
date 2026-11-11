@@ -16,6 +16,7 @@ use Modules\AppPayments\Support\PaymentLifecycleService;
 use Modules\AppPayments\Support\PaymentManager;
 use Modules\AppPayments\Support\PaymentPlanResolver;
 use Modules\AppPayments\Support\UserPlanTransitionService;
+use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 
 class CheckoutPage extends Component
 {
@@ -58,6 +59,10 @@ class CheckoutPage extends Component
     public function mount(string $plan)
     {
         $this->planSource = $plan;
+
+        if (request()->boolean('onboarding')) {
+            session(['payment_return_onboarding' => true]);
+        }
 
         $resolvedPlan = $this->plans->resolve($plan);
 
@@ -158,6 +163,41 @@ class CheckoutPage extends Component
         $this->notifySuccess(__('Manual payment request submitted. We will review it shortly.'));
     }
 
+    public function confirmOnboardingPayment()
+    {
+        abort_unless($this->isOnboardingCheckout(), 403);
+
+        $user = auth()->user();
+        abort_unless($user, 401);
+
+        $plan = $this->currentPlanOrFail();
+
+        abort_if($plan->free_plan, 422);
+
+        $this->planTransitions->applyPurchasedPlan($user->loadMissing('plan'), $plan);
+
+        $user->refresh()->loadMissing('plan');
+
+        if (! $user->hasActivePlan()) {
+            $this->notifyError(__('We could not activate this plan on your account. Please try again.'));
+
+            return null;
+        }
+
+        session()->forget('payment_coupon_code');
+        session()->forget('payment_return_onboarding');
+
+        if (class_exists(AgencyOnboarding::class)) {
+            app(AgencyOnboarding::class)->markOnboardingPlanChosen($user);
+        } else {
+            session(['agency_onboarding_plan_chosen' => true]);
+        }
+
+        $this->notifySuccess(__('Plan activated. Continue to set up your project.'));
+
+        return $this->redirectRoute('portal.onboarding.project', navigate: false);
+    }
+
     public function checkout(string $gateway)
     {
         $plan = $this->currentPlanOrFail();
@@ -255,10 +295,17 @@ class CheckoutPage extends Component
             'isRecurringChangeFlow' => $isRecurringChangeFlow,
             'isSameRecurringPlan' => $isSameRecurringPlan,
             'transitionPreview' => $this->planTransitions->preview(auth()->user()?->loadMissing('plan'), $plan),
+            'onboardingCheckout' => $this->isOnboardingCheckout(),
         ])->layout(theme_view('layouts.app', 'app'), [
             'title' => __('Payment'),
             'shellArea' => 'user',
+            'hideSidebar' => request()->boolean('onboarding') || session('payment_return_onboarding', false),
         ]);
+    }
+
+    protected function isOnboardingCheckout(): bool
+    {
+        return request()->boolean('onboarding') || session('payment_return_onboarding', false);
     }
 
     protected function currentPlanOrFail(): AdminPlan

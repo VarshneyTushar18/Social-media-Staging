@@ -26,7 +26,7 @@ use Modules\AppAffiliate\Models\AffiliateWithdrawal;
 use Modules\AppCredits\Support\CreditService;
 use Modules\AdminUser\Support\AdminPermissionCatalog;
 
-#[Fillable(['name', 'username', 'email', 'email_verified_at', 'referral_code', 'referred_by_user_id', 'avatar_path', 'avatar_disk', 'locale', 'timezone', 'role_id', 'is_super_admin', 'plan_id', 'next_plan_id', 'plan_started_at', 'plan_expires_at', 'password'])]
+#[Fillable(['name', 'username', 'email', 'email_verified_at', 'referral_code', 'referred_by_user_id', 'avatar_path', 'avatar_disk', 'locale', 'timezone', 'role_id', 'is_super_admin', 'plan_id', 'next_plan_id', 'plan_started_at', 'plan_expires_at', 'onboarding_plan_chosen_at', 'active_agency_project_id', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, HasLocalePreference
 {
@@ -46,6 +46,7 @@ class User extends Authenticatable implements MustVerifyEmail, HasLocalePreferen
             'is_super_admin' => 'bool',
             'plan_started_at' => 'datetime',
             'plan_expires_at' => 'datetime',
+            'onboarding_plan_chosen_at' => 'datetime',
             'next_plan_id' => 'integer',
         ];
     }
@@ -314,6 +315,10 @@ class User extends Authenticatable implements MustVerifyEmail, HasLocalePreferen
 
     public function hasPlanFeature(string $feature): bool
     {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
         $value = $this->plan?->permissions[$feature] ?? false;
 
         return $value === true || $value === 1 || $value === '1';
@@ -321,6 +326,10 @@ class User extends Authenticatable implements MustVerifyEmail, HasLocalePreferen
 
     public function canUsePlanFeature(string $feature): bool
     {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
         return $this->hasActivePlan() && $this->hasPlanFeature($feature);
     }
 

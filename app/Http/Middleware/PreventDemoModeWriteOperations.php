@@ -85,6 +85,14 @@ class PreventDemoModeWriteOperations
             return false;
         }
 
+        if ($request->routeIs(
+            'portal.onboarding.plan.store',
+            'portal.onboarding.project.store',
+            'portal.onboarding.setup.store',
+        )) {
+            return false;
+        }
+
         return $this->isWorkspaceRequest($request);
     }
 

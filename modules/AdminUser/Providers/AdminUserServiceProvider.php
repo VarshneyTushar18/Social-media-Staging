@@ -87,9 +87,9 @@ class AdminUserServiceProvider extends ServiceProvider
         register_user_sidebar_section('portal', 'Apps', 90);
 
         register_user_sidebar_item('overview', [
-            'label' => 'Dashboard',
+            'label' => 'Workspace dashboard',
             'route_name' => 'portal.dashboard',
-            'active_when' => ['portal.dashboard'],
+            'active_when' => ['portal.dashboard', 'portal.dashboard.*'],
             'icon' => 'dashboard',
             'order' => 10,
         ]);

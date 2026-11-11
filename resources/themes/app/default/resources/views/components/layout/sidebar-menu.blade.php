@@ -23,6 +23,8 @@
         'themes' => 'fa-solid fa-swatchbook',
         'settings' => 'fa-solid fa-sliders',
     ];
+    $agentActivePillClass = 'bg-slate-950 text-white shadow-[0_12px_24px_-18px_rgba(15,23,42,0.4)] dark:bg-white dark:text-slate-950';
+    $agentInactiveRowClass = 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.04] dark:hover:text-white';
 @endphp
 
 @if ($mode === 'mobile')
@@ -64,13 +66,11 @@
                             $isDisabled = (bool) ($mobileLink['disabled'] ?? false);
                             $href = $isDisabled ? '#' : ($mobileLink['route'] ?? '#');
                             $wireNavigate = ! $isDisabled && ! empty($mobileLink['route']);
-                            $linkClass = 'group relative flex h-11 items-center rounded-xl pl-[52px] pr-3 text-[14px] font-medium tracking-[0.005em] transition-colors duration-150';
+                            $linkClass = 'group relative flex h-11 items-center rounded-[0.7rem] pl-[52px] pr-3 text-[14px] font-medium tracking-[0.005em] transition-colors duration-150';
                             $linkClass .= $isDisabled ? ' cursor-default opacity-60' : '';
-                            $linkStyle = $isActive
-                                ? 'background-color: rgba(var(--theme-accent-rgb), 0.12); color: var(--theme-accent);'
-                                : 'color: var(--theme-sidebar-text-color);';
+                            $linkClass .= $isActive ? ' '.$agentActivePillClass.' font-semibold' : ' '.$agentInactiveRowClass;
                             $iconWrapStyle = $isActive
-                                ? 'border-color: rgba(var(--theme-accent-rgb), 0.16); background-color: rgba(var(--theme-accent-rgb), 0.12); color: var(--theme-accent);'
+                                ? 'background-color: rgba(255,255,255,0.14); color: #fff;'
                                 : 'background-color: rgba(var(--theme-border-color-rgb), 0.08); color: var(--theme-sidebar-text-color);';
                         @endphp
 
@@ -79,10 +79,9 @@
                                 href="{{ $href }}"
                                 wire:navigate
                                 class="{{ $linkClass }}"
-                                style="{{ $linkStyle }}"
                             >
                                 <span
-                                    class="absolute left-[10px] top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg border border-transparent transition-colors duration-100"
+                                    class="absolute left-[10px] top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg border border-transparent transition-colors duration-100 dark:bg-slate-900/8"
                                     style="{{ $iconWrapStyle }}"
                                 >
                                     <i class="{{ $icon }} fa-fw text-[15px] leading-none"></i>
@@ -93,10 +92,9 @@
                             <a
                                 href="{{ $href }}"
                                 class="{{ $linkClass }}"
-                                style="{{ $linkStyle }}"
                             >
                                 <span
-                                    class="absolute left-[10px] top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg border border-transparent transition-colors duration-100"
+                                    class="absolute left-[10px] top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg border border-transparent transition-colors duration-100 dark:bg-slate-900/8"
                                     style="{{ $iconWrapStyle }}"
                                 >
                                     <i class="{{ $icon }} fa-fw text-[15px] leading-none"></i>
@@ -139,15 +137,89 @@
                     @php
                         $hasChildren = ! empty($item['children']);
                         $isActive = (bool) ($item['active'] ?? false);
-                        $isCurrent = $isActive || collect($item['children'] ?? [])->contains(fn ($child) => $child['active'] ?? false);
+                        $hasActiveChild = collect($item['children'] ?? [])->contains(fn ($child) => $child['active'] ?? false);
+                        $isCurrent = $isActive || $hasActiveChild;
                         $isDisabled = (bool) ($item['disabled'] ?? false);
+                        $agentKey = (string) ($item['agent_key'] ?? '');
+                        $isAgentItem = $agentKey !== '';
+                        $agentHref = $isDisabled ? '#' : ($item['route'] ?? '#');
+                        $agentParentLeafActive = $isCurrent && $isAgentItem && ! $hasActiveChild;
+                        $agentLeafActive = $isCurrent && $isAgentItem && ! $hasChildren;
+                        $agentParentIconAccent = $agentParentLeafActive;
+                        $agentParentLabelClass = ($isCurrent && $isAgentItem && $hasActiveChild)
+                            ? 'font-medium text-slate-500 dark:text-slate-400'
+                            : 'font-semibold';
                         $iconKey = $item['icon'] ?? 'dashboard';
                         $icon = str_starts_with($iconKey, 'fa-')
                             ? $iconKey
                             : ($icons[$iconKey] ?? $icons['dashboard']);
                     @endphp
 
-                    @if ($hasChildren)
+                    @if ($hasChildren && $isAgentItem)
+                        <div x-data="{ open: {{ $isCurrent ? 'true' : 'false' }} }" class="rounded-xl">
+                            <div
+                                class="group relative flex w-full items-center rounded-[0.7rem] transition-colors duration-150 {{ $agentParentLeafActive ? $agentActivePillClass : '' }}"
+                            >
+                                <a
+                                    href="{{ $agentHref }}"
+                                    @if (! $isDisabled && ! empty($item['route'])) wire:navigate @endif
+                                    class="relative flex min-w-0 flex-1 items-center text-left transition-colors duration-150"
+                                    x-bind:class="sidebarContentVisible
+                                        ? 'h-10 rounded-[0.7rem] pl-[45px] pr-2 {{ $agentParentLeafActive ? '' : ($isCurrent && $isAgentItem ? $agentInactiveRowClass : $agentInactiveRowClass) }}'
+                                        : 'h-10 rounded-xl pl-[7px] pr-0 {{ $agentParentLeafActive ? '' : 'text-slate-600 dark:text-slate-300' }}'"
+                                    title="{{ __($item['label']) }}"
+                                >
+                                    <span class="absolute left-[7px] top-1/2 inline-flex h-[1.875rem] w-[1.875rem] -translate-y-1/2 items-center justify-center rounded-lg border border-transparent transition-colors duration-100"
+                                        @if ($agentParentIconAccent)
+                                            style="background-color: rgba(255,255,255,0.14); color: #fff;"
+                                        @endif
+                                        @class([
+                                            'dark:bg-[color:rgba(var(--theme-accent-rgb),0.12)] dark:text-[var(--theme-accent)]' => $agentParentIconAccent,
+                                        ])>
+                                        <i class="{{ $icon }} fa-fw text-[16px] leading-none"></i>
+                                    </span>
+                                    <span class="min-w-0 truncate text-[13.5px] {{ $agentParentLeafActive ? 'font-semibold' : $agentParentLabelClass }} tracking-[0.005em]"
+                                        x-cloak
+                                        x-show="sidebarContentVisible"
+                                        x-transition:enter="transition ease-out duration-140"
+                                        x-transition:enter-start="opacity-0 -translate-x-1.5"
+                                        x-transition:enter-end="opacity-100 translate-x-0">{{ __($item['label']) }}</span>
+                                </a>
+                                <button
+                                    type="button"
+                                    class="mr-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/[0.06] {{ $agentParentLeafActive ? 'text-inherit opacity-80' : 'text-slate-500' }}"
+                                    x-cloak
+                                    x-show="sidebarContentVisible"
+                                    x-on:click.stop="open = ! open"
+                                    :aria-expanded="open"
+                                >
+                                    <i class="fa-solid text-[10px]" :class="open ? 'fa-minus' : 'fa-plus'"></i>
+                                </button>
+                            </div>
+
+                            <div class="relative ml-[1.75rem] mt-1 space-y-1 overflow-hidden pl-4 before:absolute before:bottom-1.5 before:left-0 before:top-1.5 before:w-px before:bg-slate-300/75 dark:before:bg-slate-700"
+                                x-cloak
+                                x-show="open && sidebarContentVisible"
+                                x-transition:enter="transition ease-out duration-160"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0">
+                                @foreach ($item['children'] as $child)
+                                    @php
+                                        $childDisabled = (bool) ($child['disabled'] ?? false);
+                                        $childActive = (bool) ($child['active'] ?? false);
+                                    @endphp
+                                    <a
+                                        href="{{ $childDisabled ? '#' : ($child['route'] ?? '#') }}"
+                                        @if (! $childDisabled && ! empty($child['route'])) wire:navigate @endif
+                                        class="group relative flex items-center rounded-[0.7rem] py-2 pl-4 pr-3 text-[12.5px] tracking-[0.005em] transition {{ $childDisabled ? 'cursor-default opacity-60' : '' }} {{ $childActive ? $agentActivePillClass.' font-semibold' : $agentInactiveRowClass.' font-medium' }}"
+                                    >
+                                        <span class="absolute left-0 top-1/2 h-px w-3 -translate-x-[1rem] -translate-y-1/2 {{ $childActive ? 'bg-current opacity-40' : 'bg-slate-300/90 dark:bg-slate-700' }}"></span>
+                                        <span class="min-w-0 truncate">{{ __($child['label']) }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @elseif ($hasChildren)
                         <div x-data="{ open: {{ $isCurrent ? 'true' : 'false' }} }" class="rounded-xl">
                             <button
                                 type="button"
@@ -206,22 +278,27 @@
                         <a
                             href="{{ $isDisabled ? '#' : ($item['route'] ?? '#') }}"
                             @if (! $isDisabled && ! empty($item['route'])) wire:navigate @endif
-                            class="group relative flex items-center transition-colors duration-150 {{ $isDisabled ? 'cursor-default opacity-60' : '' }}"
+                            class="group relative flex items-center transition-colors duration-150 {{ $isDisabled ? 'cursor-default opacity-60' : '' }} {{ $agentLeafActive ? $agentActivePillClass : '' }}"
                             x-bind:class="sidebarContentVisible
-                                ? '{{ $isCurrent ? 'h-10 rounded-xl pl-[45px] pr-3 text-slate-950 dark:text-white' : 'h-10 rounded-xl pl-[45px] pr-3 text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white' }}'
-                                : '{{ $isCurrent ? 'h-10 rounded-none bg-transparent pl-[7px] pr-0 text-slate-950 shadow-none ring-0 dark:text-white' : 'h-10 rounded-none bg-transparent pl-[7px] pr-0 text-slate-600 shadow-none ring-0 dark:text-slate-300' }}'"
+                                ? '{{ $isCurrent && ! $isAgentItem ? 'h-10 rounded-xl pl-[45px] pr-3 text-slate-950 dark:text-white' : 'h-10 rounded-[0.7rem] pl-[45px] pr-3' }} {{ $agentLeafActive ? 'font-semibold' : ($isCurrent ? ($isAgentItem ? '' : '') : $agentInactiveRowClass) }}'
+                                : '{{ $isCurrent ? 'h-10 rounded-none bg-transparent pl-[7px] pr-0 '.($isAgentItem ? 'text-slate-600 dark:text-slate-300' : 'text-slate-950 shadow-none ring-0 dark:text-white') : 'h-10 rounded-none bg-transparent pl-[7px] pr-0 text-slate-600 shadow-none ring-0 dark:text-slate-300' }}'"
                             title="{{ __($item['label']) }}"
                         >
                                 <span class="absolute left-[7px] top-1/2 inline-flex h-[1.875rem] w-[1.875rem] -translate-y-1/2 items-center justify-center rounded-lg border border-transparent transition-colors duration-100"
                                     x-bind:class="sidebarContentVisible
-                                    ? '{{ $isCurrent ? 'shadow-[0_10px_18px_-16px_rgba(var(--theme-accent-rgb),0.32)]' : 'bg-transparent text-slate-500 group-hover:border-[color:rgba(var(--theme-accent-rgb),0.16)] group-hover:bg-[color:rgba(var(--theme-accent-rgb),0.12)] group-hover:text-[var(--theme-accent)] dark:text-slate-300 dark:group-hover:border-[color:rgba(var(--theme-accent-rgb),0.22)] dark:group-hover:bg-[color:rgba(var(--theme-accent-rgb),0.16)] dark:group-hover:text-[var(--theme-accent)]' }}'
+                                    ? '{{ $agentLeafActive ? '' : ($isCurrent ? 'shadow-[0_10px_18px_-16px_rgba(var(--theme-accent-rgb),0.32)]' : 'bg-transparent text-slate-500 group-hover:border-[color:rgba(var(--theme-accent-rgb),0.16)] group-hover:bg-[color:rgba(var(--theme-accent-rgb),0.12)] group-hover:text-[var(--theme-accent)] dark:text-slate-300 dark:group-hover:border-[color:rgba(var(--theme-accent-rgb),0.22)] dark:group-hover:bg-[color:rgba(var(--theme-accent-rgb),0.16)] dark:group-hover:text-[var(--theme-accent)]') }}'
                                     : '{{ $isCurrent ? 'bg-[var(--theme-accent)] text-white shadow-[0_10px_18px_-14px_rgba(var(--theme-accent-rgb),0.65)] dark:bg-[var(--theme-accent)] dark:text-white' : 'bg-transparent text-slate-600 group-hover:text-slate-900 dark:text-slate-200 dark:group-hover:text-white' }}'"
-                                @if ($isCurrent)
+                                @if ($agentLeafActive)
+                                    style="background-color: rgba(255,255,255,0.14); color: #fff;"
+                                @elseif ($isCurrent && ! $isAgentItem)
                                     x-bind:style="sidebarContentVisible ? 'border-color: rgba(var(--theme-accent-rgb), 0.16); background-color: rgba(var(--theme-accent-rgb), 0.12); color: var(--theme-accent);' : ''"
-                                @endif>
+                                @endif
+                                @class([
+                                    'dark:bg-[color:rgba(var(--theme-accent-rgb),0.12)] dark:text-[var(--theme-accent)]' => $agentLeafActive,
+                                ])>
                                 <i class="{{ $icon }} fa-fw text-[16px] leading-none"></i>
                             </span>
-                            <span class="min-w-0 truncate text-[13.5px] font-medium tracking-[0.005em] {{ $isCurrent ? 'text-slate-950 dark:text-white' : 'text-slate-700 dark:text-slate-300' }}"
+                            <span class="min-w-0 flex-1 truncate text-[13.5px] tracking-[0.005em] {{ $agentLeafActive || ($isCurrent && $isAgentItem) ? 'font-semibold' : 'font-medium' }} {{ $isCurrent && ! $isAgentItem ? 'text-slate-950 dark:text-white' : '' }}"
                                 x-cloak
                                 x-show="sidebarContentVisible"
                                 x-transition:enter="transition ease-out duration-140"

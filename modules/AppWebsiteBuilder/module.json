@@ -1,0 +1,11 @@
+{
+    "name": "AppWebsiteBuilder",
+    "alias": "appwebsitebuilder",
+    "description": "Website Builder agent — pages, sites, and publish requests (UI scaffold).",
+    "keywords": ["website", "builder", "agency"],
+    "priority": 0,
+    "providers": [
+        "Modules\\AppWebsiteBuilder\\Providers\\AppWebsiteBuilderServiceProvider"
+    ],
+    "files": []
+}

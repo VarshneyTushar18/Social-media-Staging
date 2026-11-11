@@ -6,9 +6,11 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\EnsureAdminAccess;
+use App\Http\Middleware\EnsureAgencyOnboarding;
 use App\Http\Middleware\InjectDemoThemeSwitcher;
 use App\Http\Middleware\PreventDemoModeWriteOperations;
 use App\Http\Middleware\ResolveUserPlanState;
+use App\Http\Middleware\SetAgencyActiveAgent;
 use Illuminate\Http\Request;
 use Modules\AdminLanguages\Http\Middleware\SetLocale;
 use Modules\AdminThemes\Http\Middleware\SetThemeContext;
@@ -41,6 +43,8 @@ return Application::configure(basePath: dirname(__DIR__))
             SetThemeContext::class,
             CaptureAffiliateReferral::class,
             ResolveUserPlanState::class,
+            EnsureAgencyOnboarding::class,
+            SetAgencyActiveAgent::class,
             EnsureAdminAccess::class,
             PreventDemoModeWriteOperations::class,
             InjectDemoThemeSwitcher::class,

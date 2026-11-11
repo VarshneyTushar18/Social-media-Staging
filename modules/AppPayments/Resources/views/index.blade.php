@@ -139,6 +139,25 @@
                         </p>
                     </x-ui.card>
                 @endif
+
+                @if (! empty($onboardingCheckout) && ! $isSameRecurringPlan)
+                    <x-ui.card class="space-y-4 p-5">
+                        <div>
+                            <p class="text-sm font-semibold" style="color: var(--theme-header-text-color);">
+                                {{ __('Onboarding checkout') }}
+                            </p>
+                            <p class="mt-1 text-sm leading-6" style="color: var(--theme-muted-text-color);">
+                                {{ __('Confirm this plan to continue. Your selected package will be applied and you will go to the next onboarding step.') }}
+                            </p>
+                        </div>
+                        <x-ui.button type="button" class="w-full justify-center" wire:click="confirmOnboardingPayment" wire:loading.attr="disabled">
+                            <span wire:loading.remove wire:target="confirmOnboardingPayment">
+                                <i class="fa-solid fa-circle-check me-2"></i>{{ __('Payment OK — continue') }}
+                            </span>
+                            <span wire:loading wire:target="confirmOnboardingPayment">{{ __('Applying plan…') }}</span>
+                        </x-ui.button>
+                    </x-ui.card>
+                @endif
             </div>
 
             @if ($manualEnabled)

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Dashboard')]
+#[Title('Workspace dashboard')]
 class Dashboard extends Component
 {
     /**
@@ -35,7 +35,7 @@ class Dashboard extends Component
             'welcomeItems' => user_dashboard_items(auth()->user(), 'welcome'),
             'dashboardItems' => $dashboardItems,
         ])->layout(theme_view('layouts.app', 'app'), [
-            'title' => __('Dashboard'),
+            'title' => __('Workspace dashboard'),
         ]);
     }
 

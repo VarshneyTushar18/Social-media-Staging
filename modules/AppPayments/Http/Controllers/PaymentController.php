@@ -13,6 +13,7 @@ use Modules\AppPayments\Support\PaymentCheckoutTypeRegistry;
 use Modules\AppPayments\Support\PaymentLifecycleService;
 use Modules\AppPayments\Support\PaymentManager;
 use Modules\AppPayments\Support\PaymentNotificationService;
+use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 
 class PaymentController extends Controller
 {
@@ -61,6 +62,20 @@ class PaymentController extends Controller
                         paymentHistory: $paymentHistory,
                     )
                 );
+            }
+
+            $isCreditPack = ($checkout->meta['checkout_kind'] ?? null) === 'credit_pack';
+
+            if ($result->isSuccessful() && $user && ! $isCreditPack && session()->pull('payment_return_onboarding', false)) {
+                if (class_exists(AgencyOnboarding::class)) {
+                    $onboarding = app(AgencyOnboarding::class);
+
+                    if ($onboarding->shouldEnforce($user) && ! $onboarding->isComplete($user)) {
+                        $onboarding->markOnboardingPlanChosen($user);
+
+                        return redirect()->route('portal.onboarding.project');
+                    }
+                }
             }
         } elseif ($request->user()) {
             $this->notifications->notify(

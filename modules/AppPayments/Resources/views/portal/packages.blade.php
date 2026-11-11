@@ -181,7 +181,21 @@
                                             @if ($isCurrentPlan)
                                                 <x-ui.button href="{{ route('portal.billing') }}" variant="outline" class="w-full justify-center" wire:navigate>{{ $ctaLabel }}</x-ui.button>
                                             @else
-                                                <x-ui.button href="{{ $plan['free_plan'] ? route('portal.dashboard') : route('payment.index', $planTarget) }}" class="w-full justify-center">{{ $ctaLabel }}</x-ui.button>
+                                                @php
+                                                    $onboardingInProgress = class_exists(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)
+                                                        && app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)->shouldEnforce($user)
+                                                        && ! app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)->isComplete($user);
+                                                    $freePlanHref = $onboardingInProgress
+                                                        ? route('portal.onboarding.plan')
+                                                        : route('portal.dashboard');
+                                                    $skipOnboardingPayment = config('modules.appagencyonboarding.skip_payment_during_onboarding', true);
+                                                    $paidPlanHref = $onboardingInProgress && ! $skipOnboardingPayment
+                                                        ? route('payment.index', ['plan' => $planTarget, 'onboarding' => 1])
+                                                        : ($onboardingInProgress && $skipOnboardingPayment
+                                                            ? route('portal.onboarding.plan')
+                                                            : route('payment.index', $planTarget));
+                                                @endphp
+                                                <x-ui.button href="{{ $plan['free_plan'] ? $freePlanHref : $paidPlanHref }}" class="w-full justify-center">{{ $ctaLabel }}</x-ui.button>
                                             @endif
                                         </div>
 

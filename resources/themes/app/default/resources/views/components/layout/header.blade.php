@@ -5,6 +5,7 @@
     'headerItemsCenter' => [],
     'headerItemsEnd' => [],
     'boxedLayout' => false,
+    'agencyProjectContext' => null,
 ])
 
 @php
@@ -20,6 +21,12 @@
             @if (isset($start))
                 <div class="lg:hidden">
                     {{ $start }}
+                </div>
+            @endif
+
+            @if ($agencyProjectContext)
+                <div class="ml-2 min-w-0 sm:ml-3">
+                    @include('appagencyonboarding::components.header-project-picker', ['context' => $agencyProjectContext])
                 </div>
             @endif
 
