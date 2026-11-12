@@ -9,6 +9,7 @@
 /storage/framework/*
 !/storage/framework/.gitignore
 /storage/logs/*
+/storage/ssl/*
 /storage/private/*
 /storage/public/*
 /storage/pail

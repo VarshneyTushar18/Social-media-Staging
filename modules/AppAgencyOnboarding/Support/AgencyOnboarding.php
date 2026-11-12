@@ -83,8 +83,8 @@ class AgencyOnboarding
         }
 
         if ($this->isComplete($user)) {
-            if (\Illuminate\Support\Facades\Route::has('portal.main')) {
-                return route('portal.main');
+            if (\Illuminate\Support\Facades\Route::has('portal.dashboard')) {
+                return route('portal.dashboard');
             }
 
             $project = $this->activeProject($user);
@@ -154,7 +154,7 @@ class AgencyOnboarding
                 'monthly_budget' => 'flexible',
                 'brand_tone' => 'professional',
                 'enabled_agents' => $allAgents,
-                'active_agent' => 'main',
+                'active_agent' => 'social',
                 'setup_completed_at' => now(),
             ]);
         }
@@ -187,7 +187,7 @@ class AgencyOnboarding
             'plan' => 'portal.onboarding.plan',
             'project' => 'portal.onboarding.project',
             'setup' => 'portal.onboarding.setup',
-            default => 'portal.main',
+            default => 'portal.dashboard',
         };
     }
 
@@ -197,8 +197,6 @@ class AgencyOnboarding
     public function mainHubRouteNames(): array
     {
         return [
-            'portal.main',
-            'portal.main.*',
             'portal.billing',
             'portal.billing.*',
             'portal.packages',
@@ -659,8 +657,8 @@ class AgencyOnboarding
 
     public function launchRoute(User $user, AgencyProject $project): string
     {
-        if (\Illuminate\Support\Facades\Route::has('portal.main')) {
-            return 'portal.main';
+        if (\Illuminate\Support\Facades\Route::has('portal.dashboard')) {
+            return 'portal.dashboard';
         }
 
         $active = (string) ($project->active_agent ?: 'social');
@@ -710,17 +708,31 @@ class AgencyOnboarding
             return 'social';
         }
 
-        if ($request->routeIs('portal.agents.website.*')) {
-            return 'website';
-        }
-
-        if ($request->routeIs('portal.agents.placeholder')) {
-            $routeAgent = (string) $request->route('agent', '');
-
-            return in_array($routeAgent, array_keys(AgentCatalog::all()), true) ? $routeAgent : null;
+        foreach (['website', 'seo', 'email'] as $agentKey) {
+            if ($this->requestMatchesAgent($agentKey, $request)) {
+                return $agentKey;
+            }
         }
 
         return null;
+    }
+
+    public function requestMatchesAgent(string $agentKey, ?Request $request = null): bool
+    {
+        $request ??= request();
+
+        if (! $request instanceof Request) {
+            return false;
+        }
+
+        $prefix = 'portal.agents.'.$agentKey;
+
+        if ($request->routeIs($prefix, $prefix.'.*')) {
+            return true;
+        }
+
+        return $request->is('portal/agents/'.$agentKey)
+            || $request->is('portal/agents/'.$agentKey.'/*');
     }
 
     public function currentAgentContext(?User $user = null): string
@@ -747,6 +759,11 @@ class AgencyOnboarding
 
         $project = $this->activeProject($user);
         $active = (string) ($project?->active_agent ?: 'social');
+
+        if ($active === 'main') {
+            $active = 'social';
+        }
+
         $enabled = $this->enabledAgentsForProject($user);
 
         if (in_array($active, $enabled, true)) {
@@ -761,11 +778,15 @@ class AgencyOnboarding
      */
     public function sidebarSectionsForActiveAgent(?User $user = null): array
     {
-        if ($this->isMainHubRequest() || $this->currentAgentContext($user) === 'main') {
+        if ($this->isMainHubRequest()) {
             return ['agents'];
         }
 
         $agentKey = $this->currentAgentContext($user);
+
+        if ($agentKey === 'main') {
+            $agentKey = 'social';
+        }
         $agent = AgentCatalog::get($agentKey);
 
         $sections = (array) ($agent['sidebar_sections'] ?? ['agents']);
@@ -845,6 +866,21 @@ class AgencyOnboarding
             return true;
         }
 
+        if ($sectionKey === 'workspace') {
+            foreach (['website', 'seo', 'email'] as $agentKey) {
+                if (! $this->requestMatchesAgent($agentKey)) {
+                    continue;
+                }
+
+                $agent = AgentCatalog::get($agentKey);
+                $sections = (array) ($agent['sidebar_sections'] ?? []);
+
+                if (in_array('workspace', $sections, true)) {
+                    return true;
+                }
+            }
+        }
+
         return in_array($sectionKey, $this->sidebarSectionsForActiveAgent($user), true);
     }
 
@@ -863,10 +899,6 @@ class AgencyOnboarding
         }
 
         if ($this->isMainHubRequest()) {
-            if ((string) $project->active_agent !== 'main') {
-                $project->forceFill(['active_agent' => 'main'])->save();
-            }
-
             return;
         }
 

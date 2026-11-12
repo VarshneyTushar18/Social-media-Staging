@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\AppAgencyOnboarding\Livewire;
+namespace Modules\AppSocial\Livewire;
 
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Title;
@@ -21,7 +21,7 @@ class SocialAgentOverview extends Component
         abort_unless(in_array('social', $onboarding->enabledAgentsForProject($user), true), 403);
     }
 
-  public function render(): View
+    public function render(): View
     {
         $onboarding = app(AgencyOnboarding::class);
         $user = auth()->user();
@@ -43,7 +43,7 @@ class SocialAgentOverview extends Component
             ->limit(5)
             ->get(['id', 'data', 'status', 'created', 'time_post']);
 
-        return view('appagencyonboarding::livewire.social-agent-overview', [
+        return view('appsocial::livewire.social-agent-overview', [
             'project' => $project,
             'metrics' => [
                 'followers' => '48.2k',

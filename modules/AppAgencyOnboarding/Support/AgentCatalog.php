@@ -5,6 +5,36 @@ namespace Modules\AppAgencyOnboarding\Support;
 class AgentCatalog
 {
     /**
+     * Full portal sidebar for the Social agent (workspace, publishing, etc.).
+     *
+     * @return list<string>
+     */
+    public static function socialSidebarSections(): array
+    {
+        return ['overview', 'agents', 'workspace', 'content-tools', 'library', 'help-desk', 'portal'];
+    }
+
+    /**
+     * Agents section only — dedicated agent shell (Website, SEO, Email).
+     *
+     * @return list<string>
+     */
+    public static function agentOnlySidebarSections(): array
+    {
+        return ['agents'];
+    }
+
+    /**
+     * Website Builder: agent overview + website workspace tools (not social publishing).
+     *
+     * @return list<string>
+     */
+    public static function agentWorkspaceSidebarSections(): array
+    {
+        return ['agents', 'workspace'];
+    }
+
+    /**
      * @return array<string, array<string, mixed>>
      */
     public static function all(): array
@@ -18,7 +48,7 @@ class AgentCatalog
                 'plan_feature' => 'agent_social',
                 'route' => 'portal.agents.social.overview',
                 'color' => '#2563eb',
-                'sidebar_sections' => ['overview', 'agents', 'workspace', 'content-tools', 'library', 'help-desk', 'portal'],
+                'sidebar_sections' => self::socialSidebarSections(),
                 'sidebar_active_when' => [
                     'portal.dashboard',
                     'portal.dashboard.*',
@@ -34,11 +64,12 @@ class AgentCatalog
                 'short' => 'SE',
                 'description' => __('Tracks rankings, audits the site and writes content briefs.'),
                 'plan_feature' => 'agent_seo',
-                'route' => 'portal.agents.placeholder',
-                'route_params' => ['agent' => 'seo'],
+                'route' => 'portal.agents.seo.overview',
                 'color' => '#0d9488',
-                'sidebar_sections' => ['agents'],
-                'sidebar_active_when' => ['portal.agents.placeholder'],
+                'sidebar_sections' => self::agentWorkspaceSidebarSections(),
+                'sidebar_active_when' => [
+                    'portal.agents.seo.*',
+                ],
             ],
             'email' => [
                 'key' => 'email',
@@ -46,11 +77,12 @@ class AgentCatalog
                 'short' => 'EM',
                 'description' => __('Builds segments, writes campaigns and runs automations.'),
                 'plan_feature' => 'agent_email',
-                'route' => 'portal.agents.placeholder',
-                'route_params' => ['agent' => 'email'],
+                'route' => 'portal.agents.email.overview',
                 'color' => '#ea580c',
-                'sidebar_sections' => ['agents'],
-                'sidebar_active_when' => ['portal.agents.placeholder'],
+                'sidebar_sections' => self::agentWorkspaceSidebarSections(),
+                'sidebar_active_when' => [
+                    'portal.agents.email.*',
+                ],
             ],
             'website' => [
                 'key' => 'website',
@@ -60,7 +92,7 @@ class AgentCatalog
                 'plan_feature' => 'agent_website',
                 'route' => 'portal.agents.website.overview',
                 'color' => '#7c3aed',
-                'sidebar_sections' => ['agents'],
+                'sidebar_sections' => self::agentWorkspaceSidebarSections(),
                 'sidebar_active_when' => [
                     'portal.agents.website.*',
                 ],

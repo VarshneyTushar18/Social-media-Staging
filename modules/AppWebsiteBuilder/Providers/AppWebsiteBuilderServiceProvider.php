@@ -10,12 +10,23 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'modules.appwebsitebuilder');
+        $this->app->singleton(\Modules\AppWebsiteBuilder\Support\WebsiteAiGenerator::class);
+        $this->app->singleton(\Modules\AppWebsiteBuilder\Support\WebsiteSiteCreator::class);
     }
 
     public function boot(): void
     {
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../Resources/views', 'appwebsitebuilder');
+
+        register_credit_action([
+            'key' => 'website_builder_ai_generate',
+            'label' => __('Website Builder AI site generation'),
+            'default_cost' => 2,
+            'order' => 22,
+            'description' => __('Credits deducted each time AI generates a website draft.'),
+        ]);
 
         if (! class_exists(AgencyOnboarding::class)) {
             return;
@@ -31,6 +42,39 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
             'order' => 40,
             'visible' => fn (): bool => $this->projectHasWebsiteAgent(),
             'children' => $this->websiteChildren(),
+        ]);
+
+        register_user_sidebar_item('workspace', [
+            'label' => __('Dashboard'),
+            'key' => 'website.workspace.dashboard',
+            'route_name' => 'portal.agents.website.dashboard',
+            'active_when' => ['portal.agents.website.dashboard'],
+            'icon' => 'fa-solid fa-chart-pie',
+            'order' => 5,
+            'agent_contexts' => ['website'],
+            'visible' => fn (): bool => $this->projectHasWebsiteAgent(),
+        ]);
+
+        register_user_sidebar_item('workspace', [
+            'label' => __('Templates'),
+            'key' => 'website.workspace.templates',
+            'route_name' => 'portal.agents.website.templates',
+            'active_when' => ['portal.agents.website.templates'],
+            'icon' => 'fa-solid fa-layer-group',
+            'order' => 7,
+            'agent_contexts' => ['website'],
+            'visible' => fn (): bool => $this->projectHasWebsiteAgent(),
+        ]);
+
+        register_user_sidebar_item('workspace', [
+            'label' => __('Domains'),
+            'key' => 'website.workspace.domains',
+            'route_name' => 'portal.agents.website.domains',
+            'active_when' => ['portal.agents.website.domains'],
+            'icon' => 'fa-solid fa-link',
+            'order' => 10,
+            'agent_contexts' => ['website'],
+            'visible' => fn (): bool => $this->projectHasWebsiteAgent(),
         ]);
     }
 
@@ -50,14 +94,19 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
      */
     protected function websiteChildren(): array
     {
-        return [
+        $onboarding = app(AgencyOnboarding::class);
+
+        return array_map(function (array $item) use ($onboarding): array {
+            $item['visible'] = fn (): bool => $onboarding->currentAgentContext() === 'website';
+
+            return $item;
+        }, [
             [
                 'label' => __('Overview'),
                 'route_name' => 'portal.agents.website.overview',
-                'active_when' => ['portal.agents.website.*'],
+                'active_when' => ['portal.agents.website.overview'],
                 'order' => 10,
-                'visible' => fn (): bool => app(AgencyOnboarding::class)->currentAgentContext() === 'website',
             ],
-        ];
+        ]);
     }
 }

@@ -19,8 +19,8 @@ class OnboardingHomeController extends Controller
         }
 
         if ($onboarding->isComplete($user)) {
-            if (\Illuminate\Support\Facades\Route::has('portal.main')) {
-                return redirect()->route('portal.main');
+            if (\Illuminate\Support\Facades\Route::has('portal.dashboard')) {
+                return redirect()->route('portal.dashboard');
             }
 
             $project = $onboarding->activeProject($user);

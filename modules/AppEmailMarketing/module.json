@@ -1,0 +1,11 @@
+{
+    "name": "AppEmailMarketing",
+    "alias": "appemailmarketing",
+    "description": "Email Marketing agent — campaigns, audiences, and automations (UI scaffold).",
+    "keywords": ["email", "agency"],
+    "priority": 0,
+    "providers": [
+        "Modules\\AppEmailMarketing\\Providers\\AppEmailMarketingServiceProvider"
+    ],
+    "files": []
+}

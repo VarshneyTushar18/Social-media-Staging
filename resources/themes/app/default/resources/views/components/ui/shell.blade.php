@@ -12,8 +12,6 @@
 
     if (request()->routeIs(
         'portal.agents.*',
-        'portal.main',
-        'portal.main.*',
         'portal.dashboard',
         'portal.dashboard.*',
         'portal.publishing.*',
@@ -60,12 +58,7 @@
             : null)
         : ['label' => 'User Dashboard', 'route' => route('portal.dashboard')];
     $sidebarHomeRoute = $shellArea === 'user'
-        ? (auth()->check()
-            && class_exists(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)
-            && app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)->isComplete(auth()->user())
-            && \Illuminate\Support\Facades\Route::has('portal.main')
-            ? route('portal.main')
-            : route('portal.dashboard'))
+        ? route('portal.dashboard')
         : route('dashboard');
     $agencyProjectContext = null;
 

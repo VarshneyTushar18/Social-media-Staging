@@ -6,10 +6,10 @@
         && class_exists(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)
         && app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)->isComplete(auth()->user());
 
-    $dashboardUrl = Route::has('portal.main') ? route('portal.main') : route('portal.dashboard');
-    $onMainDashboard = request()->routeIs('portal.main', 'portal.main.*');
+    $dashboardUrl = Route::has('portal.dashboard') ? route('portal.dashboard') : url('/portal/dashboard');
+    $onWorkspaceDashboard = request()->routeIs('portal.dashboard', 'portal.dashboard.*');
 
-    $cardStyle = $onMainDashboard
+    $cardStyle = $onWorkspaceDashboard
         ? 'border-color: rgba(var(--theme-accent-rgb), 0.32); background: color-mix(in srgb, var(--theme-accent) 6%, var(--theme-sidebar-bg) 94%);'
         : 'border-color: rgba(var(--theme-border-color-rgb), 0.5); background: color-mix(in srgb, var(--theme-surface-overlay) 18%, var(--theme-sidebar-bg) 82%);';
 @endphp
@@ -23,8 +23,8 @@
             style="background: var(--theme-accent); color: #ffffff;"
             x-cloak
             x-show="!sidebarContentVisible"
-            title="{{ __('Main dashboard') }}"
-            aria-label="{{ __('Main dashboard') }}"
+            title="{{ __('Workspace dashboard') }}"
+            aria-label="{{ __('Workspace dashboard') }}"
         >
             {{ __('HQ') }}
         </a>
@@ -47,7 +47,7 @@
                 class="truncate text-[12px] font-semibold leading-none tracking-[-0.01em]"
                 style="color: var(--theme-header-text-color);"
             >
-                {{ __('Main dashboard') }}
+                {{ __('Workspace dashboard') }}
             </span>
         </a>
     </div>

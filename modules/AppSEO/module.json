@@ -1,0 +1,11 @@
+{
+    "name": "AppSEO",
+    "alias": "appseo",
+    "description": "SEO agent — audits, keywords, and content briefs (UI scaffold).",
+    "keywords": ["seo", "agency"],
+    "priority": 0,
+    "providers": [
+        "Modules\\AppSEO\\Providers\\AppSEOServiceProvider"
+    ],
+    "files": []
+}
