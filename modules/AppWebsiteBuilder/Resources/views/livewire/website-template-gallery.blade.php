@@ -7,7 +7,11 @@
         pickCategory(slug) {
             this.categorySlug = slug;
             this.search = '';
-            $wire.filterCategory(slug);
+            $wire.filterCategory(slug).then(() => {
+                requestAnimationFrame(() => {
+                    window.TemplateCardPreview?.scheduleBoot?.(true);
+                });
+            });
         },
         openPreview(id) {
             this.previewOpen = true;
@@ -121,7 +125,7 @@
                     >
                         @include('appwebsitebuilder::partials.template-card-embed-preview', [
                             'embedUrl' => $cardEmbedUrl,
-                            'priority' => $loop->index < 6,
+                            'priority' => true,
                             'class' => 'absolute inset-0 h-full w-full',
                         ])
                     </div>
@@ -143,9 +147,9 @@
                 </article>
             @endforeach
         </div>
-
-        @include('appwebsitebuilder::partials.template-card-preview-script')
     @endif
+
+    @include('appwebsitebuilder::partials.template-card-preview-script')
 
     <template x-teleport="body">
         <div

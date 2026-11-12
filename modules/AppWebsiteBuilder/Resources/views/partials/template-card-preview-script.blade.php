@@ -241,8 +241,10 @@
                 }
 
                 bootTimer = setTimeout(() => {
-                    requestAnimationFrame(() => init(document));
-                }, 0);
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => init(document));
+                    });
+                }, 32);
             }
 
             if (window.TemplateCardPreview) {
