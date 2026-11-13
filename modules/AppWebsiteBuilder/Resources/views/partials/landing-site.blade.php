@@ -177,7 +177,10 @@
                 </div>
             </div>
             <p class="mt-8 border-t border-white/10 pt-6 text-center text-xs text-white/50">
-                © {{ date('Y') }} {{ $siteName }} · {{ __('AI draft preview — not published') }}
+                © {{ date('Y') }} {{ $siteName }}
+                @if (empty($publicMode))
+                    · {{ __('AI draft preview — not published') }}
+                @endif
             </p>
         </div>
     </footer>

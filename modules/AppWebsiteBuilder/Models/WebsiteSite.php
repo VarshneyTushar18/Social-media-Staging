@@ -21,6 +21,7 @@ class WebsiteSite extends Model
         'site_type',
         'build_method',
         'status',
+        'subdomain_slug',
         'generated_content',
         'published_at',
     ];

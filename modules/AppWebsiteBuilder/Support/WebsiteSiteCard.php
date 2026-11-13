@@ -82,6 +82,10 @@ class WebsiteSiteCard
             'summary' => $summary,
             'status' => $site->status,
             'is_published' => $site->status === WebsiteSite::STATUS_PUBLISHED,
+            'subdomain_slug' => $site->subdomain_slug,
+            'public_url' => $site->subdomain_slug
+                ? WebsitePublishConfig::publicUrl((string) $site->subdomain_slug)
+                : null,
             'preview_url' => $previewUrl,
             'preview_fallback' => self::PREVIEW_FALLBACK,
             'accent' => $accent,

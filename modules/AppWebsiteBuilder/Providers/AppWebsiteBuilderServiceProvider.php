@@ -4,19 +4,22 @@ namespace Modules\AppWebsiteBuilder\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
+use Modules\AppWebsiteBuilder\Support\WebsiteAiGenerator;
+use Modules\AppWebsiteBuilder\Support\WebsiteSiteCreator;
 
 class AppWebsiteBuilderServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'modules.appwebsitebuilder');
-        $this->app->singleton(\Modules\AppWebsiteBuilder\Support\WebsiteAiGenerator::class);
-        $this->app->singleton(\Modules\AppWebsiteBuilder\Support\WebsiteSiteCreator::class);
+        $this->app->singleton(WebsiteAiGenerator::class);
+        $this->app->singleton(WebsiteSiteCreator::class);
     }
 
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadRoutesFrom(__DIR__.'/../Routes/publish.php');
         $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../Resources/views', 'appwebsitebuilder');
 
