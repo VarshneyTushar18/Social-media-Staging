@@ -35,11 +35,12 @@ class UserDashboardRegistry
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function items(?Authenticatable $user = null, ?string $region = null): array
+    public function items(?Authenticatable $user = null, ?string $region = null, ?string $surface = null): array
     {
         $items = collect($this->items)
             ->map(fn (array $item) => $this->normalizeItem($item, $user))
             ->filter(fn (?array $item) => $item !== null && ($region === null || (($item['region'] ?? 'main') === $region)))
+            ->filter(fn (?array $item) => $item !== null && $this->matchesSurface($item, $surface))
             ->filter(fn (?array $item) => $item !== null)
             ->values();
 
@@ -125,6 +126,20 @@ class UserDashboardRegistry
     /**
      * @param  array<string, mixed>  $item
      */
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    protected function matchesSurface(array $item, ?string $surface): bool
+    {
+        if ($surface === null || $surface === '') {
+            return true;
+        }
+
+        $surfaces = $item['surfaces'] ?? ['workspace'];
+
+        return in_array($surface, (array) $surfaces, true);
+    }
+
     protected function isVisible(array $item, ?Authenticatable $user = null): bool
     {
         $visible = $item['visible'] ?? true;

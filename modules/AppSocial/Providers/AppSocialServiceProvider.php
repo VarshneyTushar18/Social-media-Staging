@@ -27,7 +27,7 @@ class AppSocialServiceProvider extends ServiceProvider
             'key' => 'agent.social',
             'agent_key' => 'social',
             'route_name' => 'portal.agents.social.overview',
-            'active_when' => ['portal.dashboard', 'portal.dashboard.*', 'portal.agents.social.*', 'portal.publishing.*', 'portal.channels', 'portal.channels.*'],
+            'active_when' => ['portal.agents.social.*', 'portal.publishing.*', 'portal.channels', 'portal.channels.*'],
             'icon' => 'fa-solid fa-share-nodes',
             'order' => 10,
             'visible' => fn (): bool => $this->projectHasSocialAgent(),

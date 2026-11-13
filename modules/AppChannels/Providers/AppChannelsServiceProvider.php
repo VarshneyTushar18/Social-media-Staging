@@ -56,6 +56,7 @@ class AppChannelsServiceProvider extends ServiceProvider
             'active_when' => ['portal.channels'],
             'icon' => 'fa-solid fa-share-nodes',
             'order' => 10,
+            'agent_contexts' => ['social'],
             'visible' => fn () => app(ChannelPlanAccess::class)->channelsEnabled(auth()->user()),
         ]);
 
@@ -64,6 +65,7 @@ class AppChannelsServiceProvider extends ServiceProvider
             'view' => 'appchannels::dashboard.user-summary',
             'width' => 'full',
             'order' => 21,
+            'surfaces' => ['social-overview'],
             'route_name' => 'portal.channels',
             'data' => function ($user): array {
                 $query = TeamWorkspaceAccess::accessibleAccountsQuery($user);

@@ -5,6 +5,8 @@ namespace Modules\AppWebsiteBuilder\Providers;
 use Illuminate\Support\ServiceProvider;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 use Modules\AppWebsiteBuilder\Support\WebsiteAiGenerator;
+use Modules\AppWebsiteBuilder\Support\WebsiteAuditService;
+use Modules\AppWebsiteBuilder\Support\WebsiteExternalPageSnapshot;
 use Modules\AppWebsiteBuilder\Support\WebsiteSiteCreator;
 
 class AppWebsiteBuilderServiceProvider extends ServiceProvider
@@ -13,6 +15,8 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'modules.appwebsitebuilder');
         $this->app->singleton(WebsiteAiGenerator::class);
+        $this->app->singleton(WebsiteAuditService::class);
+        $this->app->singleton(WebsiteExternalPageSnapshot::class);
         $this->app->singleton(WebsiteSiteCreator::class);
     }
 
@@ -29,6 +33,14 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
             'default_cost' => 2,
             'order' => 22,
             'description' => __('Credits deducted each time AI generates a website draft.'),
+        ]);
+
+        register_credit_action([
+            'key' => 'website_builder_ai_audit',
+            'label' => __('Website Builder AI site audit'),
+            'default_cost' => 1,
+            'order' => 23,
+            'description' => __('Credits deducted each time AI audits a website.'),
         ]);
 
         if (! class_exists(AgencyOnboarding::class)) {
@@ -79,6 +91,18 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
             'agent_contexts' => ['website'],
             'visible' => fn (): bool => $this->projectHasWebsiteAgent(),
         ]);
+
+        register_user_sidebar_item('workspace', [
+            'label' => __('Website audit'),
+            'key' => 'website.workspace.audit',
+            'route_name' => 'portal.agents.website.audit',
+            'active_when' => ['portal.agents.website.audit'],
+            'icon' => 'fa-solid fa-magnifying-glass-chart',
+            'order' => 12,
+            'agent_contexts' => ['website'],
+            'visible' => fn (): bool => $this->projectHasWebsiteAgent(),
+        ]);
+
     }
 
     protected function projectHasWebsiteAgent(): bool

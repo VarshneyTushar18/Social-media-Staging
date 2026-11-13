@@ -1,6 +1,7 @@
 @component(theme_view('layouts.app', 'app'), ['title' => __('Credit Usage')])
     @php
         $activeAction = request('action', '');
+        $activeAgent = $agentFilter ?? request('agent', 'all');
         $remainingCredits = ($creditSummary['unlimited'] ?? false) ? __('Unlimited') : number_format((int) ($creditSummary['remaining'] ?? 0));
         $creditTotal = ($creditSummary['unlimited'] ?? false)
             ? null
@@ -13,7 +14,7 @@
             [
                 'label' => __('Entries'),
                 'value' => number_format($entriesCount),
-                'detail' => __('Logged AI Studio credit events.'),
+                'detail' => __('Logged credit events for the selected filter.'),
                 'icon' => 'fa-solid fa-list',
                 'tone' => 'rgba(59, 130, 246, 0.10)',
                 'color' => 'rgb(37, 99, 235)',
@@ -21,7 +22,7 @@
             [
                 'label' => __('Credits used'),
                 'value' => number_format($creditsUsed),
-                'detail' => __('Total credits consumed by AI Studio actions.'),
+                'detail' => __('Total credits consumed in this filter.'),
                 'icon' => 'fa-solid fa-bolt',
                 'tone' => 'rgba(245, 158, 11, 0.12)',
                 'color' => 'rgb(217, 119, 6)',
@@ -29,7 +30,7 @@
             [
                 'label' => __('Actions used'),
                 'value' => number_format($actionsCount),
-                'detail' => __('Distinct AI Studio actions that consumed credits.'),
+                'detail' => __('Distinct actions that consumed credits.'),
                 'icon' => 'fa-solid fa-bolt',
                 'tone' => 'rgba(168, 85, 247, 0.10)',
                 'color' => 'rgb(126, 34, 206)',
@@ -52,7 +53,7 @@
                     <div class="space-y-4">
                         <span class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em]" style="border-color: rgba(var(--theme-border-color-rgb), 0.58); background: rgba(var(--theme-surface-overlay-rgb), 0.82); color: var(--theme-muted-text-color);">
                             <i class="fa-solid fa-bolt"></i>
-                            {{ __('AI Studio credits') }}
+                            {{ __('Workspace credits') }}
                         </span>
                         <div class="space-y-3">
                             <div class="flex flex-wrap items-center gap-3">
@@ -60,7 +61,7 @@
                                 <x-ui.badge variant="neutral">{{ trans_choice(':count record|:count records', $logs->total(), ['count' => number_format($logs->total())]) }}</x-ui.badge>
                             </div>
                             <p class="max-w-3xl text-sm leading-7 sm:text-[15px]" style="color: var(--theme-muted-text-color);">
-                                {{ __('Track credit spending, remaining balance, top-up packs, and AI Studio usage events from one workspace.') }}
+                                {{ __('Track credit spending, remaining balance, top-up packs, and usage across all agents from one place.') }}
                             </p>
                         </div>
                     </div>
@@ -72,14 +73,16 @@
                                 {{ __('Buy more credits') }}
                             </x-ui.button>
                         @endif
-                        <x-ui.button :href="route('portal.ai-studio.prompt-history')" variant="outline" wire:navigate>
-                            <i class="fa-solid fa-clock-rotate-left"></i>
-                            {{ __('Prompt History') }}
-                        </x-ui.button>
-                        <x-ui.button :href="route('portal.ai-studio.settings')" variant="outline" wire:navigate>
-                            <i class="fa-solid fa-sliders"></i>
-                            {{ __('AI Settings') }}
-                        </x-ui.button>
+                        @if ($showAiStudioShortcuts ?? false)
+                            <x-ui.button :href="route('portal.ai-studio.prompt-history')" variant="outline" wire:navigate>
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                                {{ __('Prompt History') }}
+                            </x-ui.button>
+                            <x-ui.button :href="route('portal.ai-studio.settings')" variant="outline" wire:navigate>
+                                <i class="fa-solid fa-sliders"></i>
+                                {{ __('AI Settings') }}
+                            </x-ui.button>
+                        @endif
                     </div>
                 </div>
 
@@ -186,7 +189,12 @@
         @endif
 
         <x-ui.card class="space-y-4">
-            <form method="GET" action="{{ route('portal.credits') }}" class="grid gap-4 md:grid-cols-[240px_auto]">
+            <form method="GET" action="{{ route('portal.credits') }}" class="grid gap-4 md:grid-cols-[minmax(0,200px)_minmax(0,240px)_auto]">
+                <x-ui.select name="agent" :label="__('Agent')">
+                    @foreach ($agentOptions as $key => $label)
+                        <option value="{{ $key }}" @selected($activeAgent === $key)>{{ $label }}</option>
+                    @endforeach
+                </x-ui.select>
                 <x-ui.select name="action" :label="__('Action')">
                     <option value="">{{ __('All actions') }}</option>
                     @foreach ($actionOptions as $key => $label)

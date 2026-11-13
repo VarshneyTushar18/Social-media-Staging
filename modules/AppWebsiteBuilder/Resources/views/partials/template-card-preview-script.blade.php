@@ -35,7 +35,11 @@
                     return;
                 }
 
-                const scale = Math.min(w / FRAME_W, h / frameH);
+                const fitPage = host.getAttribute('data-tc-fit') === 'page'
+                    || host.closest('[data-tc-fit="page"]');
+                const scale = fitPage
+                    ? Math.min(w / FRAME_W, h / frameH)
+                    : w / FRAME_W;
                 stage.style.width = FRAME_W + 'px';
                 stage.style.height = frameH + 'px';
                 stage.style.transform = 'translateX(-50%) scale(' + scale + ')';

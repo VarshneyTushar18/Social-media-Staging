@@ -140,6 +140,7 @@ class AdminUserServiceProvider extends ServiceProvider
             'view' => 'adminuser::dashboard.user-activity-summary',
             'width' => 'full',
             'order' => 40,
+            'surfaces' => ['workspace'],
             'route_name' => 'portal.activity',
             'data' => fn ($user) => (function () use ($user) {
                 $empty = [

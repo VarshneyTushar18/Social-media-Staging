@@ -137,6 +137,13 @@
                         <div class="h-full rounded-full" style="width: {{ max(4, $usagePercent) }}%; background: linear-gradient(90deg, #f59e0b 0%, #f97316 36%, rgba(var(--theme-accent-rgb,37,99,235),0.88) 100%); box-shadow: 0 0 18px rgba(245,158,11,0.22);"></div>
                     </div>
                 </div>
+
+                @if (! empty($canViewPortalCredits) && ! empty($portalCreditsUrl))
+                    <x-ui.button :href="$portalCreditsUrl" variant="outline" class="w-full justify-center" wire:navigate>
+                        <i class="fa-solid fa-coins"></i>
+                        {{ __('Credit usage') }}
+                    </x-ui.button>
+                @endif
             </div>
         </div>
     </div>

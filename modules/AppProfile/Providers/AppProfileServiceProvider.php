@@ -2,7 +2,9 @@
 
 namespace Modules\AppProfile\Providers;
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Modules\AppCredits\Support\PortalCreditAccess;
 
 class AppProfileServiceProvider extends ServiceProvider
 {
@@ -20,6 +22,7 @@ class AppProfileServiceProvider extends ServiceProvider
             'title' => 'Welcome',
             'view' => 'appprofile::dashboard.welcome',
             'region' => 'welcome',
+            'surfaces' => ['workspace'],
             'order' => 10,
             'data' => fn ($user) => (function () use ($user) {
                 $user?->loadMissing(['plan', 'nextPlan']);
@@ -47,6 +50,9 @@ class AppProfileServiceProvider extends ServiceProvider
                         'limit' => $limit,
                         'usage_percent' => $usagePercent,
                     ],
+                    'canViewPortalCredits' => PortalCreditAccess::userCanViewPortalCredits($user)
+                        && Route::has('portal.credits'),
+                    'portalCreditsUrl' => Route::has('portal.credits') ? route('portal.credits') : null,
                 ];
             })(),
             'visible' => fn ($user) => $user !== null,

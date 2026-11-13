@@ -209,13 +209,6 @@ class AppAIStudioServiceProvider extends ServiceProvider
                         'visible' => true,
                     ],
                     [
-                        'label' => __('Credit Usage'),
-                        'route_name' => 'portal.credits',
-                        'active_when' => ['portal.credits'],
-                        'order' => 100,
-                        'visible' => true,
-                    ],
-                    [
                         'label' => __('AI Settings'),
                         'route_name' => 'portal.ai-studio.settings',
                         'active_when' => ['portal.ai-studio.settings'],
@@ -231,6 +224,7 @@ class AppAIStudioServiceProvider extends ServiceProvider
             'view' => 'appaistudio::dashboard.user-summary',
             'width' => 'full',
             'order' => 23,
+            'surfaces' => ['social-overview'],
             'route_name' => 'portal.ai-studio',
             'data' => function ($user): array {
                 $team = TeamWorkspaceAccess::activeTeam($user);
@@ -325,11 +319,6 @@ class AppAIStudioServiceProvider extends ServiceProvider
                         [
                             'label' => __('Prompt History'),
                             'route' => route('portal.ai-studio.prompt-history'),
-                            'visible' => true,
-                        ],
-                        [
-                            'label' => __('Credit Usage'),
-                            'route' => route('portal.credits'),
                             'visible' => true,
                         ],
                     ], fn (array $tool): bool => (bool) ($tool['visible'] ?? true))),

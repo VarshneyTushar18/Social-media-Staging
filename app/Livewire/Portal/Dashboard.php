@@ -28,11 +28,11 @@ class Dashboard extends Component
     public function render(): View
     {
         $dashboardItems = $this->arrangeDashboardItems(
-            user_dashboard_items(auth()->user(), 'main')
+            user_dashboard_items(auth()->user(), 'main', 'workspace')
         );
 
         return view(theme_view('livewire.portal.dashboard', 'app'), [
-            'welcomeItems' => user_dashboard_items(auth()->user(), 'welcome'),
+            'welcomeItems' => user_dashboard_items(auth()->user(), 'welcome', 'workspace'),
             'dashboardItems' => $dashboardItems,
         ])->layout(theme_view('layouts.app', 'app'), [
             'title' => __('Workspace dashboard'),
@@ -48,8 +48,7 @@ class Dashboard extends Component
     private function arrangeDashboardItems(array $items): array
     {
         $priority = [
-            'app-publishing.summary' => 0,
-            'app-channels.summary' => 1,
+            'app-files.storage-summary' => 0,
         ];
 
         return collect($items)

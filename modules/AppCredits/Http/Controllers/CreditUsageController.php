@@ -9,6 +9,7 @@ use Modules\AppCredits\Models\CreditUsageLog;
 use Modules\AppCredits\Models\CreditTopupLedger;
 use Modules\AppCredits\Support\CreditSettings;
 use Modules\AppCredits\Support\CreditTopupService;
+use Modules\AppCredits\Support\PortalCreditAccess;
 use Modules\AppTeams\Support\TeamWorkspaceAccess;
 
 class CreditUsageController extends Controller
@@ -17,9 +18,35 @@ class CreditUsageController extends Controller
     {
         [$user, $team, $planOwner] = $this->context();
 
+        $agentFilter = $request->string('agent')->toString();
+        $agentFilter = $agentFilter === '' ? 'all' : $agentFilter;
+
+        $agentOptions = PortalCreditAccess::agentFilterOptions($user);
+
+        if (! array_key_exists($agentFilter, $agentOptions)) {
+            $agentFilter = 'all';
+        }
+
+        $prefixes = PortalCreditAccess::actionPrefixesForFilter($agentFilter, $user);
+
         $query = CreditUsageLog::query()
-            ->where('user_id', $planOwner?->id)
-            ->where('action_key', 'like', 'ai_studio_%')
+            ->where('user_id', $planOwner?->id);
+
+        if ($prefixes !== []) {
+            $query->where(function ($builder) use ($prefixes): void {
+                foreach ($prefixes as $index => $prefix) {
+                    if ($index === 0) {
+                        $builder->where('action_key', 'like', $prefix);
+                    } else {
+                        $builder->orWhere('action_key', 'like', $prefix);
+                    }
+                }
+            });
+        } else {
+            $query->whereRaw('1 = 0');
+        }
+
+        $query
             ->when($request->string('action')->toString() !== '', fn ($builder) => $builder->where('action_key', $request->string('action')->toString()));
 
         $summaryQuery = clone $query;
@@ -37,29 +64,25 @@ class CreditUsageController extends Controller
             && (int) $planOwner->id === (int) $user->id
             && $topups->canUserBuyTopup($planOwner);
 
+        $hasAiStudioPortal = TeamWorkspaceAccess::teamHasModule($team, 'publishing')
+            && (! $planOwner?->plan || $planOwner->hasPlanFeature('ai_studio'));
+
         return view('appcredits::portal.index', [
             'logs' => $query->latest('id')->paginate(25)->withQueryString(),
             'entriesCount' => $entriesCount,
             'creditsUsed' => $creditsUsed,
             'actionsCount' => $actionsCount,
             'creditSummary' => function_exists('credit_summary') ? credit_summary($planOwner) : ['remaining' => null, 'unlimited' => true],
-            'actionOptions' => [
-                'ai_studio_generate_captions' => __('Caption Generator'),
-                'ai_studio_rss_rewrite' => __('RSS AI Rewrite'),
-                'ai_studio_repurpose_content' => __('Repurpose'),
-                'ai_studio_plan_calendar' => __('Content Planner'),
-                'ai_studio_best_time' => __('Best Time'),
-                'ai_studio_generate_image' => __('AI Image'),
-                'ai_studio_generate_video' => __('AI Video'),
-                'ai_studio_review_content' => __('AI Review'),
-                'ai_studio_semantic_search' => __('Semantic Search'),
-            ],
+            'actionOptions' => PortalCreditAccess::actionOptionsForPrefixes($prefixes),
+            'agentFilter' => $agentFilter,
+            'agentOptions' => $agentOptions,
             'workspaceOwner' => $planOwner,
             'canBuyMoreCredits' => $canBuyMoreCredits,
             'creditPacks' => $canBuyMoreCredits ? $topups->availablePacksFor($planOwner) : collect(),
             'creditTopupRemaining' => $topups->remaining($planOwner),
             'creditSettings' => $settings,
             'topupLedger' => $topupLedger,
+            'showAiStudioShortcuts' => $hasAiStudioPortal,
         ]);
     }
 
@@ -69,8 +92,7 @@ class CreditUsageController extends Controller
         $team = TeamWorkspaceAccess::activeTeam($user);
         $planOwner = $team?->owner ?: $user;
 
-        abort_unless(TeamWorkspaceAccess::teamHasModule($team, 'publishing'), 404);
-        abort_unless(! $planOwner?->plan || $planOwner->hasPlanFeature('ai_studio'), 404);
+        abort_unless(PortalCreditAccess::userCanViewPortalCredits($user), 404);
 
         return [$user, $team, $planOwner];
     }

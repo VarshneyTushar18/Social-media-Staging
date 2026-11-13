@@ -123,6 +123,7 @@ class AppPublishingServiceProvider extends ServiceProvider
             'active_when' => ['portal.publishing.*'],
             'icon' => 'fa-solid fa-calendar-days',
             'order' => 20,
+            'agent_contexts' => ['social'],
             'visible' => function () {
                 $user = auth()->user();
                 $team = TeamWorkspaceAccess::activeTeam($user);
@@ -147,6 +148,7 @@ class AppPublishingServiceProvider extends ServiceProvider
             'view' => 'apppublishing::dashboard.user-summary',
             'width' => 'full',
             'order' => 20,
+            'surfaces' => ['social-overview'],
             'route_name' => 'portal.publishing.calendar',
             'data' => function ($user): array {
                 $team = TeamWorkspaceAccess::activeTeam($user);

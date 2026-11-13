@@ -44,6 +44,7 @@ class AppFilesServiceProvider extends ServiceProvider
             'active_when' => ['portal.files.index', 'portal.files.publish-preview', 'portal.files.edit-image', 'portal.files.update-image'],
             'icon' => 'fa-solid fa-folder-open',
             'order' => 10,
+            'cross_agent' => true,
             'visible' => fn () => app(\Modules\AppFiles\Support\FileManager::class)->filesEnabled(auth()->user()),
         ]);
 
@@ -53,6 +54,7 @@ class AppFilesServiceProvider extends ServiceProvider
             'active_when' => ['portal.files.search-online'],
             'icon' => 'fa-solid fa-photo-film',
             'order' => 11,
+            'cross_agent' => true,
             'visible' => fn () => app(\Modules\AppFiles\Support\FileManager::class)->searchMediaOnlineEnabled(auth()->user()),
         ]);
 
@@ -77,6 +79,7 @@ class AppFilesServiceProvider extends ServiceProvider
             'view' => 'appfiles::dashboard.user-storage-summary',
             'width' => 'full',
             'order' => 30,
+            'surfaces' => ['workspace'],
             'route_name' => 'portal.files.index',
             'data' => fn ($user) => (function () use ($user) {
                 if (! $user) {
