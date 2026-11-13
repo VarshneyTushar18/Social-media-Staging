@@ -1,0 +1,10 @@
+@import "../../../../../themes/shared/css/theme-base.css";
+
+@source "../../../../../../modules/AppWebsiteBuilder/Resources/views/partials/landing-site.blade.php";
+@source "../../../../../../modules/AppWebsiteBuilder/Resources/views/partials/landing/**/*.blade.php";
+
+@theme {
+    --color-accent: #111827;
+    --color-accent-content: #111827;
+    --color-accent-foreground: #ffffff;
+}

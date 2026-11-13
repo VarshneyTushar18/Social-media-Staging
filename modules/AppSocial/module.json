@@ -1,0 +1,11 @@
+{
+    "name": "AppSocial",
+    "alias": "appsocial",
+    "description": "Social Media agent — overview, publishing calendar, and connected accounts.",
+    "keywords": ["social", "agency", "publishing"],
+    "priority": 0,
+    "providers": [
+        "Modules\\AppSocial\\Providers\\AppSocialServiceProvider"
+    ],
+    "files": []
+}

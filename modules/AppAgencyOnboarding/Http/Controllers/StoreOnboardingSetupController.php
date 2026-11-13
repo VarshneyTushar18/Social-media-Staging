@@ -52,8 +52,8 @@ class StoreOnboardingSetupController extends Controller
         $request->session()->save();
 
         return redirect()->route(
-            \Illuminate\Support\Facades\Route::has('portal.main')
-                ? 'portal.main'
+            \Illuminate\Support\Facades\Route::has('portal.dashboard')
+                ? 'portal.dashboard'
                 : $onboarding->launchRoute($user, $project),
             $onboarding->launchRouteParameters($user, $project),
         );

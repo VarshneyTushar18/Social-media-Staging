@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Livewire;
@@ -51,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        $this->configureLocalSslCaBundle();
         $this->configureDefaults();
         $this->configureLivewireAssets();
         $this->configureLivewireMiddleware();
@@ -128,6 +130,35 @@ class AppServiceProvider extends ServiceProvider
         Livewire::addPersistentMiddleware([
             PreventDemoModeWriteOperations::class,
         ]);
+    }
+
+    /**
+     * Windows/local dev: use project CA bundle when present (storage/ssl/cacert.pem).
+     * Applies per request so web PHP matches CLI without editing every php.ini.
+     */
+    protected function configureLocalSslCaBundle(): void
+    {
+        $bundle = storage_path('ssl/cacert.pem');
+
+        if (! is_file($bundle)) {
+            return;
+        }
+
+        $path = realpath($bundle) ?: $bundle;
+
+        foreach (['curl.cainfo', 'openssl.cafile'] as $iniKey) {
+            ini_set($iniKey, $path);
+        }
+
+        if (method_exists(Http::class, 'globalOptions')) {
+            Http::globalOptions(['verify' => $path]);
+        } else {
+            $factory = app(\Illuminate\Http\Client\Factory::class);
+
+            if (method_exists($factory, 'globalOptions')) {
+                $factory->globalOptions(['verify' => $path]);
+            }
+        }
     }
 
     protected function configureTestingViewPath(): void

@@ -73,6 +73,15 @@
     $adobeExpressConfig = $fileManager->adobeExpressConfig(auth()->user());
     $adobeExpressEnabled = $adobeExpressConfig['enabled'] ?? false;
     $wireModel = $attributes->get('wire:model.live') ?: $attributes->get('wire:model');
+
+    if (! is_string($wireModel) || $wireModel === '') {
+        foreach ($attributes->getAttributes() as $attributeKey => $attributeValue) {
+            if (is_string($attributeKey) && str_starts_with($attributeKey, 'wire:model') && is_string($attributeValue) && $attributeValue !== '') {
+                $wireModel = $attributeValue;
+                break;
+            }
+        }
+    }
 @endphp
 
 @include('appfiles::partials.google-picker-script')

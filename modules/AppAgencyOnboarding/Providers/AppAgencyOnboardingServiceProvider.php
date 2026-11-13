@@ -17,22 +17,11 @@ class AppAgencyOnboardingServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../Resources/views', 'appagencyonboarding');
 
         register_user_sidebar_section('agents', __('Agents'), 8);
-
-        register_user_sidebar_item('agents', [
-            'label' => __('Social Media'),
-            'key' => 'agent.social',
-            'agent_key' => 'social',
-            'route_name' => 'portal.agents.social.overview',
-            'active_when' => ['portal.dashboard', 'portal.dashboard.*', 'portal.agents.social.*', 'portal.publishing.*', 'portal.channels', 'portal.channels.*'],
-            'icon' => 'fa-solid fa-share-nodes',
-            'order' => 10,
-            'visible' => fn () => $this->projectHasAgent('social'),
-            'children' => $this->socialChildren(),
-        ]);
 
         foreach ($this->enabledAgentSidebarItems() as $item) {
             register_user_sidebar_item('agents', $item);
@@ -49,7 +38,7 @@ class AppAgencyOnboardingServiceProvider extends ServiceProvider
         $items = [];
 
         foreach (AgentCatalog::all() as $key => $agent) {
-            if (in_array($key, ['social', 'website'], true)) {
+            if (in_array($key, ['social', 'website', 'seo', 'email'], true)) {
                 continue;
             }
 
@@ -84,7 +73,11 @@ class AppAgencyOnboardingServiceProvider extends ServiceProvider
                         'route_params' => $params,
                         'agent_key' => $key,
                         'order' => 10,
-                        'active_when' => (array) ($agent['sidebar_active_when'] ?? ['portal.agents.placeholder']),
+                        'active_when' => match ($key) {
+                            'seo' => ['portal.agents.seo.overview'],
+                            'email' => ['portal.agents.email.overview'],
+                            default => ['portal.agents.placeholder'],
+                        },
                         'visible' => fn () => app(AgencyOnboarding::class)->currentAgentContext() === $key,
                     ],
                 ],
@@ -92,47 +85,6 @@ class AppAgencyOnboardingServiceProvider extends ServiceProvider
         }
 
         return $items;
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    protected function socialChildren(): array
-    {
-        $items = [
-            [
-                'label' => __('Overview'),
-                'route_name' => 'portal.agents.social.overview',
-                'active_when' => ['portal.agents.social.overview'],
-                'order' => 10,
-            ],
-        ];
-
-        if (Route::has('portal.publishing.calendar')) {
-            $items[] = [
-                'label' => __('Content calendar'),
-                'route_name' => 'portal.publishing.calendar',
-                'active_when' => ['portal.publishing.calendar'],
-                'order' => 20,
-            ];
-        }
-
-        if (Route::has('portal.channels')) {
-            $items[] = [
-                'label' => __('Accounts'),
-                'route_name' => 'portal.channels',
-                'active_when' => ['portal.channels', 'portal.channels.*'],
-                'order' => 40,
-            ];
-        }
-
-        $onboarding = app(AgencyOnboarding::class);
-
-        return array_map(function (array $item) use ($onboarding): array {
-            $item['visible'] = fn (): bool => $onboarding->currentAgentContext() === 'social';
-
-            return $item;
-        }, $items);
     }
 
     protected function projectHasAgent(string $agentKey): bool

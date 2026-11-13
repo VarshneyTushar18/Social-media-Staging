@@ -1,8 +1,11 @@
 {
     "name": "AppAgencyOnboarding",
     "alias": "appagencyonboarding",
+    "description": "Agency workspace — multi-project onboarding, agent catalog, and portal shell.",
+    "keywords": ["agency", "onboarding", "workspace", "portal"],
     "priority": 5,
     "providers": [
         "Modules\\AppAgencyOnboarding\\Providers\\AppAgencyOnboardingServiceProvider"
-    ]
+    ],
+    "files": []
 }

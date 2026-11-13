@@ -63,8 +63,13 @@ class SidebarRegistry
 
         $resolvedSections = array_map(function (array $section): array {
             $items = $section['items'];
+            $sectionKey = (string) ($section['key'] ?? '');
             usort($items, fn (array $a, array $b) => ($a['order'] ?? 100) <=> ($b['order'] ?? 100));
-            $items = array_values(array_filter($items, fn (array $item): bool => $this->isVisible($item)));
+            $items = array_values(array_filter(
+                $items,
+                fn (array $item): bool => $this->isVisible($item)
+                    && $this->isVisibleForAgentNavContext($item, $sectionKey),
+            ));
 
             return [
                 'key' => $section['key'],
@@ -267,7 +272,58 @@ class SidebarRegistry
             return (bool) $visible($item);
         }
 
+        if (
+            $user
+            && ($item['route_name'] ?? '') === 'portal.dashboard'
+            && class_exists(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)
+        ) {
+            $onboarding = app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class);
+
+            if ($onboarding->shouldEnforce($user) && $onboarding->isComplete($user)) {
+                return false;
+            }
+        }
+
         return (bool) $visible;
+    }
+
+    protected function isVisibleForAgentNavContext(array $item, string $sectionKey): bool
+    {
+        if (! class_exists(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class)) {
+            return true;
+        }
+
+        $user = auth()->user();
+        $onboarding = app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class);
+
+        if ($user === null || ! $onboarding->shouldEnforce($user) || ! $onboarding->isComplete($user)) {
+            return true;
+        }
+
+        if (! in_array($sectionKey, ['workspace', 'content-tools'], true)) {
+            return true;
+        }
+
+        if (! empty($item['cross_agent'])) {
+            return true;
+        }
+
+        if (isset($item['agent_contexts']) && is_array($item['agent_contexts'])) {
+            foreach ($item['agent_contexts'] as $agentKey) {
+                if (method_exists($onboarding, 'requestMatchesAgent')
+                    && $onboarding->requestMatchesAgent((string) $agentKey)) {
+                    return true;
+                }
+
+                if ($onboarding->currentAgentContext($user) === $agentKey) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return $onboarding->currentAgentContext($user) === 'social';
     }
 
     /**
