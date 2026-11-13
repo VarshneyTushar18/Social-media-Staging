@@ -82,14 +82,21 @@
                             class="group overflow-hidden rounded-[var(--theme-card-radius,0.875rem)] border text-left transition hover:-translate-y-px hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
                             style="border-color: var(--theme-border-color); background: var(--theme-surface-overlay);"
                         >
+                            @php
+                                $cardEmbedUrl = route('portal.agents.website.templates.card-preview', [
+                                    'templateId' => $template['id'],
+                                    'card' => 1,
+                                    'type' => $siteType,
+                                ]);
+                            @endphp
                             <div
-                                class="relative aspect-[4/5] overflow-hidden border-b bg-white sm:aspect-[16/10]"
-                                style="border-color: var(--theme-border-color);"
+                                class="relative h-[min(70vh,720px)] w-full overflow-hidden border-b sm:h-[min(62vh,680px)]"
+                                style="border-color: var(--theme-border-color); background: rgba(var(--theme-border-color-rgb), 0.08);"
+                                data-tc-fit="page"
                             >
-                                @include('appwebsitebuilder::partials.template-card-visual', [
-                                    'templateName' => $template['name'],
-                                    'previewUrl' => $template['preview_url'] ?? '',
-                                    'previewFallback' => $template['preview_fallback'] ?? '',
+                                @include('appwebsitebuilder::partials.template-card-embed-preview', [
+                                    'embedUrl' => $cardEmbedUrl,
+                                    'priority' => true,
                                     'class' => 'absolute inset-0 h-full w-full',
                                 ])
                             </div>
@@ -112,6 +119,8 @@
                         </button>
                     @endforeach
                 </div>
+
+                @include('appwebsitebuilder::partials.template-card-preview-script')
             </x-ui.card>
         </div>
     @else

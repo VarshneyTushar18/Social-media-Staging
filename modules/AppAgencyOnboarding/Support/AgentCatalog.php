@@ -5,13 +5,37 @@ namespace Modules\AppAgencyOnboarding\Support;
 class AgentCatalog
 {
     /**
+     * Shared project media (same routes on every agent and HQ).
+     *
+     * @return list<string>
+     */
+    public static function sharedLibrarySidebarSections(): array
+    {
+        return ['library'];
+    }
+
+    /**
      * Full portal sidebar for the Social agent (workspace, publishing, etc.).
      *
      * @return list<string>
      */
     public static function socialSidebarSections(): array
     {
-        return ['overview', 'agents', 'workspace', 'content-tools', 'library', 'help-desk', 'portal'];
+        return array_merge(
+            ['overview', 'agents', 'workspace', 'content-tools'],
+            self::sharedLibrarySidebarSections(),
+            ['help-desk', 'portal'],
+        );
+    }
+
+    /**
+     * Workspace HQ: agents only — library appears after an agent is opened.
+     *
+     * @return list<string>
+     */
+    public static function mainHubSidebarSections(): array
+    {
+        return ['agents'];
     }
 
     /**
@@ -31,7 +55,7 @@ class AgentCatalog
      */
     public static function agentWorkspaceSidebarSections(): array
     {
-        return ['agents', 'workspace'];
+        return array_merge(['agents', 'workspace'], self::sharedLibrarySidebarSections());
     }
 
     /**
@@ -50,8 +74,6 @@ class AgentCatalog
                 'color' => '#2563eb',
                 'sidebar_sections' => self::socialSidebarSections(),
                 'sidebar_active_when' => [
-                    'portal.dashboard',
-                    'portal.dashboard.*',
                     'portal.agents.social.*',
                     'portal.publishing.*',
                     'portal.channels',

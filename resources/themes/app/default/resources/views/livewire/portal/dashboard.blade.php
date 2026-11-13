@@ -94,12 +94,12 @@
         </div>
     @endif
 
-    @if ($dashboardItems === [])
+    @if ($dashboardItems === [] && ($welcomeItems ?? []) === [])
         <x-ui.empty
             :title="__('No dashboard items registered')"
             :description="__('Start by registering widgets from user-facing modules with register_user_dashboard_item().')"
         />
-    @else
+    @elseif ($dashboardItems !== [])
         <div
             x-ref="board"
             class="min-w-0 max-w-full grid gap-x-5 gap-y-8 lg:gap-y-10 lg:grid-cols-12"

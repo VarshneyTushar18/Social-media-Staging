@@ -132,9 +132,12 @@ if (! function_exists('register_user_dashboard_item')) {
 }
 
 if (! function_exists('user_dashboard_items')) {
-    function user_dashboard_items(?\Illuminate\Contracts\Auth\Authenticatable $user = null, ?string $region = null): array
-    {
-        return user_dashboard_registry()->items($user, $region);
+    function user_dashboard_items(
+        ?\Illuminate\Contracts\Auth\Authenticatable $user = null,
+        ?string $region = null,
+        ?string $surface = null,
+    ): array {
+        return user_dashboard_registry()->items($user, $region, $surface);
     }
 }
 

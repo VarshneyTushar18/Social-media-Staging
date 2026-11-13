@@ -279,7 +279,7 @@ class SidebarRegistry
         ) {
             $onboarding = app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class);
 
-            if ($onboarding->shouldEnforce($user) && $onboarding->isComplete($user)) {
+            if ($onboarding->isComplete($user)) {
                 return false;
             }
         }
@@ -296,7 +296,7 @@ class SidebarRegistry
         $user = auth()->user();
         $onboarding = app(\Modules\AppAgencyOnboarding\Support\AgencyOnboarding::class);
 
-        if ($user === null || ! $onboarding->shouldEnforce($user) || ! $onboarding->isComplete($user)) {
+        if ($user === null || ! $onboarding->shouldFilterPortalNavigationByAgent($user)) {
             return true;
         }
 

@@ -20,6 +20,23 @@ class AgencyOnboarding
         return true;
     }
 
+    /**
+     * Portal sidebar sections (workspace, content-tools) filter by active agent
+     * for every user with a completed workspace — including admin and super admin.
+     */
+    public function shouldFilterPortalNavigationByAgent(?User $user = null): bool
+    {
+        $user ??= auth()->user();
+
+        if ($user === null || ! $this->isComplete($user)) {
+            return false;
+        }
+
+        $request = request();
+
+        return $request instanceof Request && $request->routeIs('portal.*');
+    }
+
     public function hasChosenOnboardingPlan(User $user): bool
     {
         if (session('agency_onboarding_plan_chosen', false)) {
@@ -197,12 +214,17 @@ class AgencyOnboarding
     public function mainHubRouteNames(): array
     {
         return [
+            'portal.dashboard',
+            'portal.dashboard.*',
+            'portal.credits',
             'portal.billing',
             'portal.billing.*',
             'portal.packages',
             'portal.packages.*',
             'portal.invoices',
             'portal.invoices.*',
+            'portal.files',
+            'portal.files.*',
         ];
     }
 
@@ -698,8 +720,6 @@ class AgencyOnboarding
         }
 
         if ($request->routeIs(
-            'portal.dashboard',
-            'portal.dashboard.*',
             'portal.agents.social.*',
             'portal.publishing.*',
             'portal.channels',
@@ -779,7 +799,7 @@ class AgencyOnboarding
     public function sidebarSectionsForActiveAgent(?User $user = null): array
     {
         if ($this->isMainHubRequest()) {
-            return ['agents'];
+            return AgentCatalog::mainHubSidebarSections();
         }
 
         $agentKey = $this->currentAgentContext($user);
@@ -858,7 +878,7 @@ class AgencyOnboarding
     {
         $user ??= auth()->user();
 
-        if ($user === null || ! $this->shouldEnforce($user) || ! $this->isComplete($user)) {
+        if ($user === null || ! $this->shouldFilterPortalNavigationByAgent($user)) {
             return true;
         }
 

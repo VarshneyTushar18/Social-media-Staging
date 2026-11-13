@@ -116,12 +116,13 @@
                 @endphp
                 <article
                     wire:key="template-card-{{ $template['id'] }}"
-                    class="flex h-full flex-col overflow-hidden rounded-[var(--theme-card-radius,0.875rem)] border shadow-sm"
+                    class="flex h-full flex-col overflow-hidden rounded-[var(--theme-card-radius,0.875rem)] border shadow-sm transition hover:-translate-y-px hover:shadow-md"
                     style="border-color: var(--theme-border-color); background: var(--theme-surface-overlay);"
                 >
                     <div
-                        class="relative aspect-[3/4] w-full shrink-0 border-b sm:aspect-[4/5]"
+                        class="relative h-[min(70vh,720px)] w-full shrink-0 overflow-hidden border-b sm:h-[min(62vh,680px)] lg:h-[min(58vh,640px)]"
                         style="border-color: var(--theme-border-color); background: rgba(var(--theme-border-color-rgb), 0.08);"
+                        data-tc-fit="page"
                     >
                         @include('appwebsitebuilder::partials.template-card-embed-preview', [
                             'embedUrl' => $cardEmbedUrl,
@@ -130,14 +131,27 @@
                         ])
                     </div>
 
-                    <div class="flex flex-col gap-3 p-4 sm:p-5">
-                        <h3 class="text-base font-bold leading-snug" style="color: var(--theme-header-text-color);">
-                            {{ $template['name'] }}
-                        </h3>
+                    <div class="flex flex-1 flex-col gap-3 p-4 sm:p-5">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-base font-bold leading-snug" style="color: var(--theme-header-text-color);">
+                                {{ $template['name'] }}
+                            </h3>
+                            @if (! empty($template['recommended']))
+                                <span
+                                    class="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                                    style="background: rgba(var(--theme-accent-rgb), 0.14); color: var(--theme-accent);"
+                                >{{ __('Best match') }}</span>
+                            @endif
+                        </div>
+                        @if (! empty($template['description']))
+                            <p class="text-sm leading-relaxed" style="color: var(--theme-muted-text-color);">
+                                {{ $template['description'] }}
+                            </p>
+                        @endif
                         <button
                             type="button"
                             x-on:click="openPreview(@js($template['id']))"
-                            class="inline-flex h-9 w-fit cursor-pointer items-center justify-center gap-2 rounded-[var(--theme-button-radius,0.75rem)] border px-3.5 text-sm font-semibold shadow-sm hover:-translate-y-px"
+                            class="mt-auto inline-flex h-9 w-fit cursor-pointer items-center justify-center gap-2 rounded-[var(--theme-button-radius,0.75rem)] border px-3.5 text-sm font-semibold shadow-sm hover:-translate-y-px"
                             style="border-color: var(--theme-border-color); color: var(--theme-header-text-color); background: var(--theme-button-soft-bg);"
                         >
                             <i class="fa-regular fa-eye text-[11px]"></i>
