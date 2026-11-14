@@ -26,6 +26,8 @@ class WebsiteAgentDashboard extends Component
 
     public ?int $publishDomainSiteId = null;
 
+    public string $publishDomainProvider = 'godaddy';
+
     public function mount(): void
     {
         $this->guardWebsiteAgent();
@@ -45,6 +47,7 @@ class WebsiteAgentDashboard extends Component
 
         if ($mode === 'custom') {
             abort_unless(WebsiteDomainProviders::find($providerKey) !== null, 422);
+            abort_unless(in_array($providerKey, ['godaddy', 'namecheap'], true), 422);
         } else {
             $providerKey = '';
         }
@@ -92,6 +95,8 @@ class WebsiteAgentDashboard extends Component
 
         $site->forceFill([
             'subdomain_slug' => $normalized,
+            'custom_domain' => null,
+            'custom_domain_connected_at' => null,
             'status' => WebsiteSite::STATUS_PUBLISHED,
             'published_at' => now(),
         ])->save();
@@ -115,12 +120,16 @@ class WebsiteAgentDashboard extends Component
         );
     }
 
-    public function openPublishDomainModal(int $siteId): void
+    public function openPublishDomainModal(int $siteId, string $provider = 'godaddy'): void
     {
         $this->guardWebsiteAgent();
 
         $user = auth()->user();
         abort_unless($user, 403);
+
+        $provider = strtolower(trim($provider));
+        abort_unless(WebsiteDomainProviders::find($provider) !== null, 422);
+        abort_unless(in_array($provider, ['godaddy', 'namecheap'], true), 422);
 
         $site = WebsiteSite::query()
             ->where('owner_user_id', $user->id)
@@ -129,11 +138,17 @@ class WebsiteAgentDashboard extends Component
         abort_unless($site, 404);
 
         $this->publishDomainSiteId = $siteId;
+        $this->publishDomainProvider = $provider;
     }
 
     public function closePublishDomainModal(): void
     {
+        if ($this->publishDomainSiteId) {
+            $this->dispatch('persist-publish-wizard-state');
+        }
+
         $this->publishDomainSiteId = null;
+        $this->publishDomainProvider = 'godaddy';
     }
 
     #[On('publish-domain-flow-closed')]

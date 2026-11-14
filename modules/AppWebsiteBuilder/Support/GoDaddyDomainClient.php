@@ -23,7 +23,7 @@ class GoDaddyDomainClient
     }
 
     /**
-     * @return list<array{domain: string, display_host: string, available: bool, price: ?float, currency: string, price_label: ?string, checkout_url: string}>
+     * @return list<array{domain: string, display_host: string, available: bool, checkout_url: string}>
      */
     public function searchWithAvailability(string $query, int $limit = 12): array
     {
@@ -37,10 +37,54 @@ class GoDaddyDomainClient
             return [];
         }
 
-        $candidates = $this->collectCandidates($seed, $limit);
-        $rows = $this->availabilityForDomains($candidates);
+        $candidateLimit = min(18, $limit + 4);
+        $candidates = $this->collectCandidates($seed, $candidateLimit);
 
-        return array_map(fn (array $row): array => $this->formatRow($row), $this->sortRows($rows, $limit));
+        $availableRows = [];
+
+        foreach (array_chunk($candidates, 12) as $chunk) {
+            $rows = $this->availabilityForDomains($chunk);
+
+            foreach ($rows as $row) {
+                if ((bool) ($row['available'] ?? false)) {
+                    $availableRows[] = $row;
+                }
+            }
+
+            if (count($availableRows) >= $limit) {
+                break;
+            }
+        }
+
+        usort($availableRows, fn (array $a, array $b): int => strcmp(
+            (string) ($a['domain'] ?? ''),
+            (string) ($b['domain'] ?? '')
+        ));
+
+        $formatted = array_map(fn (array $row): array => $this->formatRow($row), $availableRows);
+
+        return array_slice($formatted, 0, $limit);
+    }
+
+    public function isDomainAvailable(string $domain): bool
+    {
+        if (! $this->isConfigured()) {
+            return false;
+        }
+
+        $domain = $this->normalizeDomain($domain);
+
+        if ($domain === '') {
+            return false;
+        }
+
+        $rows = $this->availabilityForDomains([$domain]);
+
+        if ($rows === []) {
+            return false;
+        }
+
+        return (bool) ($rows[0]['available'] ?? false);
     }
 
     public function checkoutUrl(string $domain): string
@@ -69,8 +113,8 @@ class GoDaddyDomainClient
 
         $response = $this->request('get', '/v1/domains/suggest', [
             'query' => $seed,
-            'limit' => $limit,
-            'waitMs' => 2000,
+            'limit' => min(24, max($limit, 12)),
+            'waitMs' => 250,
         ]);
 
         if ($response->successful()) {
@@ -87,7 +131,7 @@ class GoDaddyDomainClient
             }
         }
 
-        return array_slice($domains, 0, $limit + 1);
+        return array_slice($domains, 0, $limit);
     }
 
     /**
@@ -147,23 +191,17 @@ class GoDaddyDomainClient
 
     /**
      * @param  array<string, mixed>  $row
-     * @return array{domain: string, display_host: string, available: bool, price: ?float, currency: string, price_label: ?string, checkout_url: string}
+     * @return array{domain: string, display_host: string, available: bool, checkout_url: string}
      */
     protected function formatRow(array $row): array
     {
         $domain = $this->normalizeDomain((string) ($row['domain'] ?? ''));
         $available = (bool) ($row['available'] ?? false);
-        $currency = strtoupper((string) ($row['currency'] ?? 'USD'));
-        $priceMicro = isset($row['price']) ? (int) $row['price'] : null;
-        $price = $priceMicro !== null ? round($priceMicro / 1_000_000, 2) : null;
 
         return [
             'domain' => $domain,
             'display_host' => $this->displayHost($domain),
             'available' => $available,
-            'price' => $price,
-            'currency' => $currency,
-            'price_label' => $available && $price !== null ? $this->formatMoney($price, $currency) : null,
             'checkout_url' => $this->checkoutUrl($domain),
         ];
     }
@@ -186,18 +224,6 @@ class GoDaddyDomainClient
         });
 
         return array_slice($rows, 0, $limit);
-    }
-
-    protected function formatMoney(float $amount, string $currency): string
-    {
-        $symbol = match ($currency) {
-            'USD' => '$',
-            'EUR' => '€',
-            'GBP' => '£',
-            default => $currency.' ',
-        };
-
-        return $symbol.number_format($amount, 2);
     }
 
     protected function normalizeSearchQuery(string $query): string

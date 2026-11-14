@@ -11,6 +11,7 @@ use Livewire\Component;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 use Modules\AppAgencyOnboarding\Support\AgentCatalog;
 use Modules\AppWebsiteBuilder\Models\WebsiteSite;
+use Modules\AppWebsiteBuilder\Support\WebsiteCustomDomain;
 use Modules\AppWebsiteBuilder\Support\WebsiteDomainProviders;
 use Modules\AppWebsiteBuilder\Support\WebsitePublishConfig;
 use Modules\AppWebsiteBuilder\Support\WebsiteSiteCard;
@@ -50,6 +51,45 @@ class WebsiteDomains extends Component
         ]);
     }
 
+    public function unpublishSubdomain(int $siteId): void
+    {
+        $this->guardWebsiteAgent();
+
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        $site = WebsiteSite::query()
+            ->where('owner_user_id', $user->id)
+            ->find($siteId);
+
+        abort_unless($site, 404);
+        $this->guardSiteAccess($site);
+
+        $slug = trim((string) $site->subdomain_slug);
+
+        if ($slug === '' || filled($site->custom_domain)) {
+            return;
+        }
+
+        $siteName = (string) $site->name;
+
+        $site->forceFill([
+            'subdomain_slug' => null,
+            'status' => WebsiteSite::STATUS_DRAFT,
+            'published_at' => null,
+        ])->save();
+
+        $this->dispatch(
+            'app-toast',
+            type: 'success',
+            title: __('Subdomain removed'),
+            message: __(':name is no longer public at /sites/:slug. It remains as a draft on your dashboard.', [
+                'name' => $siteName,
+                'slug' => $slug,
+            ]),
+        );
+    }
+
     public function render(): View
     {
         $onboarding = app(AgencyOnboarding::class);
@@ -63,6 +103,7 @@ class WebsiteDomains extends Component
         $agent = AgentCatalog::get('website') ?? [];
         $queueItems = $this->domainSetupQueueItems($user);
         $publishedSubdomains = $this->publishedSubdomainItems($user, $project?->id);
+        $publishedCustomDomains = $this->publishedCustomDomainItems($user, $project?->id);
         $queueSummary = [
             'total' => count($queueItems),
             'pending_dns' => count($queueItems),
@@ -74,6 +115,7 @@ class WebsiteDomains extends Component
             'project' => $project,
             'domainSetupQueue' => $queueItems,
             'publishedSubdomains' => $publishedSubdomains,
+            'publishedCustomDomains' => $publishedCustomDomains,
             'queueSummary' => $queueSummary,
         ])->layout(theme_view('layouts.app', 'app'), [
             'shellArea' => 'user',
@@ -94,6 +136,7 @@ class WebsiteDomains extends Component
         $sites = WebsiteSite::query()
             ->forProject($projectId, (int) $user->getAuthIdentifier())
             ->where('status', WebsiteSite::STATUS_PUBLISHED)
+            ->whereNull('custom_domain')
             ->whereNotNull('subdomain_slug')
             ->where('subdomain_slug', '!=', '')
             ->orderByDesc('published_at')
@@ -110,6 +153,45 @@ class WebsiteDomains extends Component
                     'name' => (string) $site->name,
                     'subdomain_slug' => $slug,
                     'public_url' => WebsitePublishConfig::publicUrl($slug),
+                    'status_label' => __('Published'),
+                    'published_label' => $site->published_at?->diffForHumans() ?? '',
+                    'preview_url' => $card['preview_url'],
+                    'preview_fallback' => $card['preview_fallback'],
+                    'accent' => $card['accent'],
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function publishedCustomDomainItems(?Authenticatable $user, ?int $projectId): array
+    {
+        if (! $user || ! Schema::hasTable('website_sites')) {
+            return [];
+        }
+
+        $sites = WebsiteSite::query()
+            ->forProject($projectId, (int) $user->getAuthIdentifier())
+            ->where('status', WebsiteSite::STATUS_PUBLISHED)
+            ->whereNotNull('custom_domain')
+            ->where('custom_domain', '!=', '')
+            ->orderByDesc('published_at')
+            ->limit(50)
+            ->get();
+
+        return $sites
+            ->map(function (WebsiteSite $site): array {
+                $card = WebsiteSiteCard::fromSite($site);
+                $domain = (string) $site->custom_domain;
+
+                return [
+                    'id' => (int) $site->id,
+                    'name' => (string) $site->name,
+                    'custom_domain' => $domain,
+                    'public_url' => WebsiteCustomDomain::publicUrl($domain),
                     'status_label' => __('Published'),
                     'published_label' => $site->published_at?->diffForHumans() ?? '',
                     'preview_url' => $card['preview_url'],
@@ -181,5 +263,28 @@ class WebsiteDomains extends Component
             'queued_label' => $queuedAt->diffForHumans(),
             'preview_route' => route('portal.agents.website.sites.preview', $site->id),
         ]];
+    }
+
+    protected function guardWebsiteAgent(): void
+    {
+        $onboarding = app(AgencyOnboarding::class);
+        $user = auth()->user();
+
+        abort_unless($user && $onboarding->isComplete($user), 403);
+        abort_unless(in_array('website', $onboarding->enabledAgentsForProject($user), true), 403);
+    }
+
+    protected function guardSiteAccess(WebsiteSite $site): void
+    {
+        $user = auth()->user();
+        abort_unless($user && (int) $site->owner_user_id === (int) $user->id, 403);
+
+        $onboarding = app(AgencyOnboarding::class);
+        $project = $onboarding->activeProject($user);
+        $projectId = $project?->id;
+
+        if ($site->agency_project_id !== null && $projectId !== null && (int) $site->agency_project_id !== (int) $projectId) {
+            abort(403);
+        }
     }
 }

@@ -12,7 +12,6 @@ class WebsiteDomainProviders
         return [
             ['key' => 'godaddy', 'name' => 'GoDaddy', 'url' => 'https://www.godaddy.com/domains'],
             ['key' => 'namecheap', 'name' => 'Namecheap', 'url' => 'https://www.namecheap.com/domains/'],
-            ['key' => 'cloudflare', 'name' => 'Cloudflare', 'url' => 'https://www.cloudflare.com/products/registrar/'],
         ];
     }
 

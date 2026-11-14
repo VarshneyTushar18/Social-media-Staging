@@ -24,6 +24,8 @@ class WebsiteSite extends Model
         'subdomain_slug',
         'custom_domain',
         'custom_domain_connected_at',
+        'pending_custom_domain',
+        'publish_wizard_step',
         'generated_content',
         'published_at',
     ];

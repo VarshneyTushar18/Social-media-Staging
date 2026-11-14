@@ -1,26 +1,62 @@
-@props(['embedded' => false, 'publishStepNumber' => 1])
+@props([
+    'embedded' => false,
+    'publishStepNumber' => 1,
+    'domainProvider' => 'godaddy',
+    'providerLabel' => 'GoDaddy',
+    'displayHost' => null,
+    'bareDomain' => null,
+])
 
 @php
-    $godaddy = app(\Modules\AppWebsiteBuilder\Support\GoDaddyDomainClient::class);
+    $hostFormatter = is_callable($displayHost)
+        ? $displayHost
+        : fn (string $domain): string => app(
+            $domainProvider === 'namecheap'
+                ? \Modules\AppWebsiteBuilder\Support\NamecheapDomainClient::class
+                : \Modules\AppWebsiteBuilder\Support\GoDaddyDomainClient::class
+        )->displayHost($domain);
+
+    $bareHostFormatter = is_callable($bareDomain)
+        ? $bareDomain
+        : fn (string $domain): string => \Modules\AppWebsiteBuilder\Support\WebsiteDomainInputValidator::normalizeRegisteredDomain($domain);
+
+    $dnsRecordStatusRows = $dnsRecordStatuses ?? [];
+
+    $dnsStatusFor = function (string $type, string $host) use ($dnsRecordStatusRows): ?string {
+        foreach ($dnsRecordStatusRows as $row) {
+            if (strcasecmp((string) ($row['type'] ?? ''), $type) === 0 && (string) ($row['host'] ?? '') === $host) {
+                return (string) ($row['status'] ?? 'pending');
+            }
+        }
+
+        return null;
+    };
+
+    $dnsStatusLabel = fn (?string $status): string => match ($status) {
+        'connected' => __('Connected'),
+        'wrong' => __('Wrong value'),
+        default => __('Pending'),
+    };
+
     $stepTitles = [
         'search' => __('Find your domain'),
         'review' => __('Confirm your domain'),
-        'register' => __('Register at GoDaddy'),
+        'register' => __('Register at :provider', ['provider' => $providerLabel]),
         'dns' => __('Connect DNS'),
         'done' => __('You’re all set'),
     ];
     $stepDescriptions = [
-        'search' => __('Search a business name or type a domain. We’ll show available options and estimated prices.'),
-        'review' => __('You’ll complete checkout on GoDaddy, then connect DNS in the next steps.'),
-        'register' => __('Checkout and payment happen on GoDaddy. After purchase, return here for DNS records.'),
-        'dns' => __('Add these records in your GoDaddy DNS panel, then publish your site.'),
+        'search' => __('Search a business name or type a domain. We’ll show available options.'),
+        'review' => __('You’ll complete checkout on :provider, then connect DNS in the next steps.', ['provider' => $providerLabel]),
+        'register' => __('Checkout and payment happen on :provider. After purchase, return here for DNS records.', ['provider' => $providerLabel]),
+        'dns' => __('Add these records in your :provider DNS panel, then publish your site.', ['provider' => $providerLabel]),
         'done' => __('When DNS propagates, visitors can open your site on your custom domain.'),
     ];
 @endphp
 
 <div @class([
     'w-full min-w-0 max-w-full space-y-4',
-    'overflow-x-hidden pb-4 sm:pb-5' => $embedded,
+    'pb-4 sm:pb-5' => $embedded,
 ])>
     @if ($step !== 'done')
         <div @class(['w-full min-w-0', 'px-4 pt-4 sm:px-5 sm:pt-5' => $embedded])>
@@ -31,15 +67,39 @@
         </div>
     @endif
 
-    @if (filled($selectedDomain ?? null) && $step !== 'done')
+    @if ($resumePendingSelection && filled($selectedDomain ?? null) && $step === 'search')
         <div
-            class="flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-sm"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm"
             style="border-color: var(--theme-border-color); background: rgba(var(--theme-border-color-rgb), 0.08);"
         >
-            <span class="text-xs font-semibold uppercase tracking-wide" style="color: var(--theme-muted-text-color);">{{ __('Selected') }}</span>
-            <span class="font-semibold" style="color: var(--theme-accent);">{{ $godaddy->displayHost($selectedDomain) }}</span>
-            @if (! empty($selectedPriceLabel))
-                <span class="text-xs" style="color: var(--theme-muted-text-color);">· {{ $selectedPriceLabel }}</span>
+            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wide" style="color: var(--theme-muted-text-color);">{{ __('Selected') }}</span>
+                <span class="truncate font-semibold" style="color: var(--theme-accent);">{{ $bareHostFormatter($selectedDomain) }}</span>
+                <button
+                    type="button"
+                    wire:click="clearSelectedDomain"
+                    wire:loading.attr="disabled"
+                    wire:target="clearSelectedDomain"
+                    class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition hover:opacity-80"
+                    style="color: var(--theme-muted-text-color);"
+                    title="{{ __('Remove selection') }}"
+                    aria-label="{{ __('Remove selection') }}"
+                >
+                    <i class="fa-solid fa-xmark text-[11px]"></i>
+                </button>
+            </div>
+            @if ($step === 'search')
+                <x-ui.button
+                    type="button"
+                    size="sm"
+                    wire:click="continueWithSelectedDomain"
+                    wire:loading.attr="disabled"
+                    wire:target="continueWithSelectedDomain"
+                    class="shrink-0"
+                >
+                    <span wire:loading.remove wire:target="continueWithSelectedDomain">{{ __('Continue') }}</span>
+                    <span wire:loading wire:target="continueWithSelectedDomain">{{ __('Continue…') }}</span>
+                </x-ui.button>
             @endif
         </div>
     @endif
@@ -47,7 +107,9 @@
     <x-ui.card
         :padding="$embedded ? 'none' : 'md'"
         @class([
-            'flex w-full min-w-0 max-w-full flex-col overflow-hidden',
+            'flex w-full min-w-0 max-w-full flex-col',
+            'overflow-visible' => $embedded,
+            'overflow-hidden' => ! $embedded,
             'mb-0 !shadow-none' => $embedded,
         ])
     >
@@ -76,36 +138,75 @@
                             {{ __('Search domains') }}
                         </label>
                     @endunless
-                    <div class="flex w-full items-stretch gap-2">
+                    <div class="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2">
                         <input
                             id="publish-domain-search"
-                            type="search"
+                            type="text"
                             wire:model="searchQuery"
-                            wire:keydown.enter="searchDomains"
-                            class="h-11 min-w-0 flex-1 rounded-xl border px-4 text-sm font-semibold sm:h-12"
+                            wire:keydown.enter.prevent="searchDomains"
+                            class="col-start-1 h-11 min-w-0 w-full rounded-xl border px-4 text-sm font-semibold sm:h-12"
                             style="border-color: var(--theme-border-color); background: var(--theme-button-soft-bg); color: var(--theme-header-text-color);"
                             placeholder="yourbrand.com"
                             autocomplete="off"
+                            inputmode="search"
+                            enterkeyhint="search"
                         />
-                        <x-ui.button
+                        <button
                             type="button"
                             wire:click="searchDomains"
                             wire:loading.attr="disabled"
                             wire:target="searchDomains"
-                            class="h-11 shrink-0 px-4 sm:h-12"
+                            class="col-start-2 inline-flex h-11 min-w-[5.5rem] items-center justify-center whitespace-nowrap rounded-xl px-4 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 sm:min-w-[6.5rem] sm:px-5"
+                            style="background-color: #6366f1; border: 1px solid #4f46e5;"
                         >
-                            <span wire:loading.remove wire:target="searchDomains"><i class="fa-solid fa-magnifying-glass"></i> {{ __('Search') }}</span>
+                            <span wire:loading.remove wire:target="searchDomains">{{ __('Search') }}</span>
                             <span wire:loading wire:target="searchDomains">{{ __('Searching…') }}</span>
-                        </x-ui.button>
+                        </button>
                     </div>
+                    @if ($searchInputError)
+                        <p class="text-sm" style="color: #f87171;">{{ $searchInputError }}</p>
+                    @endif
                 </div>
 
-                @if ($searchError)
-                    <x-ui.alert variant="danger" :description="$searchError" inline />
+                @error('search')
+                    <x-ui.alert variant="danger" :description="$message" inline />
+                @enderror
+
+                <div
+                    wire:loading.delay.none.flex
+                    wire:target="searchDomains"
+                    class="hidden flex-col gap-2 rounded-xl border p-4"
+                    style="border-color: var(--theme-border-color);"
+                    aria-live="polite"
+                    aria-busy="true"
+                >
+                    @for ($skeletonIndex = 0; $skeletonIndex < 6; $skeletonIndex++)
+                        <div class="flex items-center justify-between gap-3 py-1">
+                            <div class="min-w-0 flex-1 space-y-2">
+                                <div class="h-4 w-2/3 max-w-xs animate-pulse rounded-md" style="background: rgba(var(--theme-border-color-rgb), 0.35);"></div>
+                                <div class="h-3 w-1/3 animate-pulse rounded-md" style="background: rgba(var(--theme-border-color-rgb), 0.22);"></div>
+                            </div>
+                            <div class="h-9 w-20 animate-pulse rounded-xl" style="background: rgba(var(--theme-border-color-rgb), 0.28);"></div>
+                        </div>
+                    @endfor
+                    <p class="pt-1 text-sm font-medium" style="color: var(--theme-muted-text-color);">
+                        {{ __('Checking available domains…') }}
+                    </p>
+                </div>
+
+                @if ($searchError && ! $searchInputError)
+                    <div wire:loading.remove wire:target="searchDomains">
+                        <x-ui.alert variant="danger" :description="$searchError" inline />
+                    </div>
                 @endif
 
                 @if (count($searchResults) > 0)
-                    <ul class="divide-y rounded-xl border max-h-[min(45vh,22rem)] overflow-y-auto" style="border-color: var(--theme-border-color);">
+                    <ul
+                        wire:loading.delay.none.remove
+                        wire:target="searchDomains"
+                        class="divide-y rounded-xl border max-h-[min(45vh,22rem)] overflow-y-auto"
+                        style="border-color: var(--theme-border-color);"
+                    >
                         @foreach ($searchResults as $loopIndex => $row)
                             <li
                                 wire:key="domain-{{ $row['domain'] }}"
@@ -120,18 +221,13 @@
                                         @endif
                                     </p>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    @if (! empty($row['price_label']))
-                                        <span class="text-sm font-bold tabular-nums" style="color: var(--theme-header-text-color);">{{ $row['price_label'] }}</span>
-                                    @endif
-                                    <x-ui.button
-                                        type="button"
-                                        size="sm"
-                                        wire:click="selectDomain({{ \Illuminate\Support\Js::from($row['domain']) }}, {{ \Illuminate\Support\Js::from($row['price_label'] ?? null) }}, {{ \Illuminate\Support\Js::from($row['checkout_url']) }})"
-                                    >
-                                        {{ __('Select') }}
-                                    </x-ui.button>
-                                </div>
+                                <x-ui.button
+                                    type="button"
+                                    size="sm"
+                                    wire:click="selectDomain({{ \Illuminate\Support\Js::from($row['domain']) }}, {{ \Illuminate\Support\Js::from($row['checkout_url']) }})"
+                                >
+                                    {{ __('Select') }}
+                                </x-ui.button>
                             </li>
                         @endforeach
                     </ul>
@@ -139,19 +235,13 @@
             @endif
 
             @if ($step === 'review' && $selectedDomain)
-                <div class="rounded-xl border p-5" style="border-color: var(--theme-border-color); background: rgba(var(--theme-border-color-rgb), 0.06);">
-                    <p class="text-2xl font-bold tracking-tight sm:text-3xl" style="color: var(--theme-accent);">
-                        {{ $godaddy->displayHost($selectedDomain) }}
+                <div class="rounded-xl border p-4 sm:p-5" style="border-color: var(--theme-border-color); background: rgba(var(--theme-border-color-rgb), 0.06);">
+                    <p class="text-base font-semibold tracking-tight sm:text-lg" style="color: var(--theme-accent);">
+                        {{ $bareHostFormatter($selectedDomain) }}
                     </p>
-                    @if ($selectedPriceLabel)
-                        <p class="mt-2 text-sm" style="color: var(--theme-muted-text-color);">
-                            {{ __('Estimated price') }}:
-                            <strong style="color: var(--theme-header-text-color);">{{ $selectedPriceLabel }}</strong>
-                        </p>
-                    @endif
                 </div>
                 <ul class="space-y-2 text-sm" style="color: var(--theme-muted-text-color);">
-                    <li class="flex gap-2"><i class="fa-solid fa-check mt-0.5 text-[11px]" style="color: var(--theme-accent);"></i>{{ __('Registration and payment on GoDaddy’s secure checkout') }}</li>
+                    <li class="flex gap-2"><i class="fa-solid fa-check mt-0.5 text-[11px]" style="color: var(--theme-accent);"></i>{{ __('Registration and payment on :provider’s secure checkout', ['provider' => $providerLabel]) }}</li>
                     <li class="flex gap-2"><i class="fa-solid fa-check mt-0.5 text-[11px]" style="color: var(--theme-accent);"></i>{{ __('DNS connection guided in the final step') }}</li>
                     <li class="flex gap-2"><i class="fa-solid fa-check mt-0.5 text-[11px]" style="color: var(--theme-accent);"></i>{{ __('Your site stays on your platform subdomain until DNS is live') }}</li>
                 </ul>
@@ -163,7 +253,7 @@
                         <i class="fa-solid fa-shield-halved"></i>
                     </span>
                     <div class="min-w-0 space-y-1">
-                        <p class="text-sm font-semibold" style="color: var(--theme-header-text-color);">{{ __('Secured by GoDaddy') }}</p>
+                        <p class="text-sm font-semibold" style="color: var(--theme-header-text-color);">{{ __('Secured by :provider', ['provider' => $providerLabel]) }}</p>
                         <p class="text-sm leading-relaxed" style="color: var(--theme-muted-text-color);">
                             {{ __('We open checkout in a new tab. Complete purchase there, then continue with DNS in this window.') }}
                         </p>
@@ -173,8 +263,18 @@
 
             @if ($step === 'dns' && $selectedDomain)
                 <p class="text-sm font-medium" style="color: var(--theme-header-text-color);">
-                    {{ __('DNS for :domain', ['domain' => $selectedDomain]) }}
+                    {{ __('DNS for :domain', ['domain' => $bareHostFormatter($selectedDomain)]) }}
                 </p>
+                <p class="text-xs leading-relaxed" style="color: var(--theme-muted-text-color);">
+                    {{ __('DNS changes can take 24–48 hours. Use Verify DNS after you save records at :provider.', ['provider' => $providerLabel]) }}
+                </p>
+                @if ($dnsVerifyMessage)
+                    <x-ui.alert
+                        :variant="$dnsVerified ? 'success' : 'warning'"
+                        :description="$dnsVerifyMessage"
+                        inline
+                    />
+                @endif
                 <div class="overflow-x-auto rounded-xl border" style="border-color: var(--theme-border-color);">
                     <table class="w-full text-left text-sm">
                         <thead class="text-xs uppercase" style="color: var(--theme-muted-text-color);">
@@ -182,16 +282,30 @@
                                 <th class="px-3 py-2">{{ __('Type') }}</th>
                                 <th class="px-3 py-2">{{ __('Host') }}</th>
                                 <th class="px-3 py-2">{{ __('Points to') }}</th>
+                                <th class="px-3 py-2">{{ __('Status') }}</th>
                                 <th class="w-10 px-2 py-2"><span class="sr-only">{{ __('Copy') }}</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($dnsRecords as $record)
-                                @php($copyValue = is_string($record['points_to'] ?? null) && ! str_contains((string) $record['points_to'], ' ') ? $record['points_to'] : null)
+                                @php
+                                    $copyValue = is_string($record['points_to'] ?? null) && ! str_contains((string) $record['points_to'], ' ') ? $record['points_to'] : null;
+                                    $rowStatus = $dnsStatusFor((string) $record['type'], (string) $record['host']);
+                                @endphp
                                 <tr wire:key="dns-{{ $record['type'] }}-{{ $record['host'] }}" class="border-t" style="border-color: var(--theme-border-color);">
                                     <td class="px-3 py-2 font-mono text-xs">{{ $record['type'] }}</td>
                                     <td class="px-3 py-2 font-mono text-xs">{{ $record['host'] }}</td>
                                     <td class="px-3 py-2 font-mono text-xs break-all">{{ $record['points_to'] }}</td>
+                                    <td class="px-3 py-2 text-xs">
+                                        <span @class([
+                                            'rounded px-2 py-0.5 font-semibold uppercase tracking-wide',
+                                            'bg-emerald-500/15 text-emerald-400' => $rowStatus === 'connected',
+                                            'bg-rose-500/15 text-rose-400' => $rowStatus === 'wrong',
+                                            'bg-amber-500/15 text-amber-300' => $rowStatus !== 'connected' && $rowStatus !== 'wrong',
+                                        ])>
+                                            {{ $dnsStatusLabel($rowStatus) }}
+                                        </span>
+                                    </td>
                                     <td class="px-2 py-2">
                                         @if ($copyValue)
                                             <button
@@ -200,7 +314,7 @@
                                                 style="color: var(--theme-muted-text-color);"
                                                 title="{{ __('Copy value') }}"
                                                 x-data
-                                                @click="navigator.clipboard?.writeText({{ \Illuminate\Support\Js::from($copyValue) }})"
+                                                x-on:click="navigator.clipboard?.writeText({{ \Illuminate\Support\Js::from($copyValue) }})"
                                             >
                                                 <i class="fa-regular fa-copy"></i>
                                             </button>
@@ -237,7 +351,7 @@
             @endif
         </div>
 
-        @if ($step !== 'done' && ! ($step === 'search' && count($searchResults) === 0))
+        @if ($step !== 'done' && ! ($step === 'search' && ($resumePendingSelection || count($searchResults) === 0)))
             <div
                 class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:px-5 sm:py-4"
                 style="border-color: var(--theme-border-color); background: rgba(var(--theme-border-color-rgb), 0.06);"
@@ -251,24 +365,53 @@
                     @endif
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    @if ($step === 'search' && count($searchResults) > 0)
+                    @if ($step === 'search' && filled(trim($searchQuery ?? '')) && count($searchResults) > 0 && blank($selectedDomain ?? null))
                         <span class="text-xs" style="color: var(--theme-muted-text-color);">{{ __('Select a domain to continue') }}</span>
                     @endif
                     @if ($step === 'review' && $selectedDomain)
                         <x-ui.button type="button" variant="outline" wire:click="goBack">{{ __('Search again') }}</x-ui.button>
-                        <x-ui.button type="button" wire:click="goToRegister">{{ __('Continue') }}</x-ui.button>
+                        <x-ui.button
+                            type="button"
+                            wire:click="goToRegister"
+                            wire:loading.attr="disabled"
+                            wire:target="goToRegister"
+                        >
+                            <span wire:loading.remove wire:target="goToRegister">{{ __('Continue') }}</span>
+                            <span wire:loading wire:target="goToRegister">{{ __('Checking…') }}</span>
+                        </x-ui.button>
                     @endif
                     @if ($step === 'register' && $selectedDomain)
-                        <x-ui.button type="button" wire:click="openGodaddyCheckout">
+                        <x-ui.button type="button" wire:click="openRegistrarCheckout">
                             <i class="fa-solid fa-arrow-up-right-from-square text-[11px]"></i>
-                            {{ __('Open GoDaddy checkout') }}
+                            {{ __('Open :provider checkout', ['provider' => $providerLabel]) }}
                         </x-ui.button>
                     @endif
                     @if ($step === 'dns' && $selectedDomain)
-                        <x-ui.button type="button" wire:click="connectAndPublish" wire:loading.attr="disabled" wire:target="connectAndPublish">
-                            <span wire:loading.remove wire:target="connectAndPublish">{{ __('Save & publish site') }}</span>
-                            <span wire:loading wire:target="connectAndPublish">{{ __('Publishing…') }}</span>
+                        <x-ui.button
+                            type="button"
+                            variant="outline"
+                            wire:click="verifyDns"
+                            wire:loading.attr="disabled"
+                            wire:target="verifyDns"
+                        >
+                            <span wire:loading.remove wire:target="verifyDns">{{ __('Verify DNS') }}</span>
+                            <span wire:loading wire:target="verifyDns">{{ __('Verifying…') }}</span>
                         </x-ui.button>
+                        @if ($dnsVerified)
+                            <x-ui.button
+                                type="button"
+                                wire:click="connectAndPublish"
+                                wire:loading.attr="disabled"
+                                wire:target="connectAndPublish"
+                            >
+                                <span wire:loading.remove wire:target="connectAndPublish">{{ __('Save & publish site') }}</span>
+                                <span wire:loading wire:target="connectAndPublish">{{ __('Publishing…') }}</span>
+                            </x-ui.button>
+                        @else
+                            <x-ui.button type="button" disabled>
+                                {{ __('Save & publish site') }}
+                            </x-ui.button>
+                        @endif
                     @endif
                 </div>
             </div>

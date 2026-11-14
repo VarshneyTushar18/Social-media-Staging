@@ -62,35 +62,18 @@
 
             $wire.publishSubdomain(this.publishSiteId, this.subdomainSlug).then(() => this.closePublishSite());
         },
-        connectCustomDomain() {
-            if (! this.selectedProviderKey) {
-                return;
-            }
-
-            const provider = this.domainProviders.find((entry) => entry.key === this.selectedProviderKey);
-
-            if (! provider?.url) {
-                return;
-            }
-
-            window.open(provider.url, '_blank', 'noopener,noreferrer');
-            $wire.continuePublish(this.publishSiteId, 'custom', this.selectedProviderKey);
-            this.closePublishSite();
-        },
         confirmCustomDomain() {
             if (! this.selectedProviderKey) {
                 return;
             }
 
-            if (this.selectedProviderKey === 'godaddy') {
-                $wire.openPublishDomainModal(this.publishSiteId).then(() => {
-                    this.publishStep = 'godaddy';
-                });
-
+            if (! ['godaddy', 'namecheap'].includes(this.selectedProviderKey)) {
                 return;
             }
 
-            this.connectCustomDomain();
+            $wire.openPublishDomainModal(this.publishSiteId, this.selectedProviderKey).then(() => {
+                this.publishStep = 'domainWizard';
+            });
         },
     }"
     x-init="Livewire.on('close-publish-site-modal', () => closePublishSite())"
@@ -280,9 +263,9 @@
     <template x-teleport="body">
         <div
             x-cloak
-            x-show="publishSiteOpen && publishStep !== 'godaddy'"
+            x-show="publishSiteOpen && publishStep !== 'domainWizard'"
             class="fixed inset-0 z-[120] flex items-end justify-center overflow-y-auto p-4 sm:items-center sm:p-6"
-            x-on:keydown.escape.window="if (publishSiteOpen && publishStep !== 'godaddy') closePublishSite()"
+            x-on:keydown.escape.window="if (publishSiteOpen && publishStep !== 'domainWizard') closePublishSite()"
         >
             <div class="absolute inset-0 bg-white/55 backdrop-blur-[6px] dark:bg-slate-950/55" x-on:click="closePublishSite()"></div>
 
@@ -422,13 +405,11 @@
                                 </x-ui.button>
                                 <x-ui.button
                                     type="button"
-                                    x-show="publishStep === 'providers'"
+                                    x-show="publishStep === 'providers' && selectedProviderKey"
                                     x-cloak
-                                    x-bind:disabled="! selectedProviderKey"
                                     x-on:click="confirmCustomDomain()"
                                 >
-                                    <span x-show="selectedProviderKey !== 'godaddy'">{{ __('Connect domain') }}</span>
-                                    <span x-show="selectedProviderKey === 'godaddy'" x-cloak>{{ __('Continue with GoDaddy') }}</span>
+                                    {{ __('Continue') }}
                                 </x-ui.button>
                                 <x-ui.button type="button" variant="outline" x-on:click="closePublishSite()">
                                     {{ __('Cancel') }}
@@ -444,9 +425,9 @@
 
     <div
         x-cloak
-        x-show="publishSiteOpen && publishStep === 'godaddy'"
+        x-show="publishSiteOpen && publishStep === 'domainWizard'"
         class="fixed inset-0 z-[120] flex items-end justify-center overflow-x-hidden overflow-y-auto p-4 sm:items-center sm:p-6"
-        x-on:keydown.escape.window="if (publishSiteOpen && publishStep === 'godaddy') closePublishSite()"
+        x-on:keydown.escape.window="if (publishSiteOpen && publishStep === 'domainWizard') closePublishSite()"
     >
         <div class="absolute inset-0 bg-white/55 backdrop-blur-[6px] dark:bg-slate-950/55" x-on:click="closePublishSite()"></div>
 
@@ -479,7 +460,8 @@
                             <livewire:modules.app-website-builder.livewire.website-publish-wizard
                                 :website-site="$godaddyPublishSite"
                                 :embedded="true"
-                                wire:key="publish-unified-{{ $publishDomainSiteId }}"
+                                :domain-provider="$publishDomainProvider"
+                                wire:key="publish-unified-{{ $publishDomainSiteId }}-{{ $publishDomainProvider }}"
                             />
                         @endif
                     @endif

@@ -6,5 +6,9 @@
     @include('appwebsitebuilder::partials.website-publish-domain-flow', [
         'embedded' => $embedded,
         'publishStepNumber' => $publishStepNumber,
+        'domainProvider' => $domainProvider,
+        'providerLabel' => $providerLabel,
+        'displayHost' => $displayHost,
+        'bareDomain' => $bareDomain,
     ])
 </div>

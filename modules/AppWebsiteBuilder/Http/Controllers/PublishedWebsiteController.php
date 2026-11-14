@@ -25,6 +25,7 @@ class PublishedWebsiteController
 
         $site = WebsiteSite::query()
             ->where('subdomain_slug', $slug)
+            ->whereNull('custom_domain')
             ->where('status', WebsiteSite::STATUS_PUBLISHED)
             ->first();
 

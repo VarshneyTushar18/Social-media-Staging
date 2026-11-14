@@ -24,4 +24,12 @@ return [
         'api_secret' => env('GODADDY_API_SECRET'),
         'api_token' => env('GODADDY_API_TOKEN'),
     ],
+
+    'namecheap' => [
+        'sandbox' => env('NAMECHEAP_SANDBOX', true),
+        'api_user' => env('NAMECHEAP_API_USER'),
+        'api_key' => env('NAMECHEAP_API_KEY'),
+        'username' => env('NAMECHEAP_USERNAME'),
+        'client_ip' => env('NAMECHEAP_CLIENT_IP'),
+    ],
 ];
