@@ -5,6 +5,7 @@ namespace Modules\AppWebsiteBuilder\Livewire;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
@@ -17,6 +18,14 @@ use Modules\AppWebsiteBuilder\Support\WebsiteSubdomain;
 #[Title('Website Builder dashboard')]
 class WebsiteAgentDashboard extends Component
 {
+    public bool $deleteModalOpen = false;
+
+    public ?int $deleteSiteId = null;
+
+    public string $deleteSiteName = '';
+
+    public ?int $publishDomainSiteId = null;
+
     public function mount(): void
     {
         $this->guardWebsiteAgent();
@@ -106,9 +115,65 @@ class WebsiteAgentDashboard extends Component
         );
     }
 
-    public function deleteSite(int $siteId): void
+    public function openPublishDomainModal(int $siteId): void
     {
         $this->guardWebsiteAgent();
+
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        $site = WebsiteSite::query()
+            ->where('owner_user_id', $user->id)
+            ->find($siteId);
+
+        abort_unless($site, 404);
+
+        $this->publishDomainSiteId = $siteId;
+    }
+
+    public function closePublishDomainModal(): void
+    {
+        $this->publishDomainSiteId = null;
+    }
+
+    #[On('publish-domain-flow-closed')]
+    public function onPublishDomainFlowClosed(): void
+    {
+        $this->closePublishDomainModal();
+        $this->dispatch('close-publish-site-modal');
+    }
+
+    public function openDeleteSiteModal(int $siteId): void
+    {
+        $this->guardWebsiteAgent();
+
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        $site = WebsiteSite::query()
+            ->where('owner_user_id', $user->id)
+            ->find($siteId);
+
+        abort_unless($site, 404);
+
+        $this->deleteSiteId = $siteId;
+        $this->deleteSiteName = (string) $site->name;
+        $this->deleteModalOpen = true;
+    }
+
+    public function closeDeleteSiteModal(): void
+    {
+        $this->deleteModalOpen = false;
+        $this->deleteSiteId = null;
+        $this->deleteSiteName = '';
+    }
+
+    public function deleteSite(): void
+    {
+        $this->guardWebsiteAgent();
+
+        $siteId = (int) $this->deleteSiteId;
+        abort_unless($siteId > 0, 422);
 
         $user = auth()->user();
         abort_unless($user, 403);
@@ -117,7 +182,18 @@ class WebsiteAgentDashboard extends Component
         abort_unless($site, 404);
         $this->guardSiteAccess($site);
 
+        $siteName = (string) $site->name;
+
         $site->delete();
+
+        $this->closeDeleteSiteModal();
+
+        $this->dispatch(
+            'app-toast',
+            type: 'success',
+            title: __('Site deleted'),
+            message: __(':name was removed.', ['name' => $siteName]),
+        );
     }
 
     public function render(): View

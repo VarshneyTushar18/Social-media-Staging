@@ -2,7 +2,9 @@
 
 namespace Modules\AppWebsiteBuilder\Providers;
 
+use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
+use Modules\AppWebsiteBuilder\Http\Middleware\ServePublishedWebsiteByCustomDomain;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 use Modules\AppWebsiteBuilder\Support\WebsiteAiGenerator;
 use Modules\AppWebsiteBuilder\Support\WebsiteAuditService;
@@ -22,6 +24,10 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        /** @var Router $router */
+        $router = $this->app->make(Router::class);
+        $router->pushMiddlewareToGroup('web', ServePublishedWebsiteByCustomDomain::class);
+
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../Routes/publish.php');
         $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');

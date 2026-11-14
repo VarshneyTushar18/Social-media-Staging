@@ -16,4 +16,12 @@ return [
     */
     'publish_domain' => env('WEBSITE_PUBLISH_DOMAIN'),
     'publish_path_prefix' => env('WEBSITE_PUBLISH_PATH_PREFIX', 'sites'),
+    'publish_a_record' => env('WEBSITE_PUBLISH_A_RECORD'),
+
+    'godaddy' => [
+        'env' => env('GODADDY_API_ENV', 'ote'),
+        'api_key' => env('GODADDY_API_KEY'),
+        'api_secret' => env('GODADDY_API_SECRET'),
+        'api_token' => env('GODADDY_API_TOKEN'),
+    ],
 ];

@@ -68,8 +68,11 @@
                         'mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3',
                         'pointer-events-none opacity-60' => $isCreatingFromTemplate,
                     ])
+                    wire:key="wizard-template-grid-{{ md5($siteType) }}"
                     wire:loading.class="pointer-events-none opacity-60"
                     wire:target="selectTemplate"
+                    x-data
+                    x-init="$nextTick(() => requestAnimationFrame(() => window.TemplateCardPreview?.scheduleBoot?.(true)))"
                 >
                     @foreach ($templates as $template)
                         <button
@@ -90,7 +93,7 @@
                                 ]);
                             @endphp
                             <div
-                                class="relative h-[min(70vh,720px)] w-full overflow-hidden border-b sm:h-[min(62vh,680px)]"
+                                class="relative h-[min(70vh,720px)] w-full shrink-0 overflow-hidden border-b sm:h-[min(62vh,680px)] lg:h-[min(58vh,640px)]"
                                 style="border-color: var(--theme-border-color); background: rgba(var(--theme-border-color-rgb), 0.08);"
                                 data-tc-fit="page"
                             >

@@ -76,6 +76,14 @@ class CreateWebsiteWizard extends Component
 
         $this->step = 3;
         $this->resetErrorBag('generate');
+
+        $this->js(<<<'JS'
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    window.TemplateCardPreview?.scheduleBoot?.(true);
+                });
+            });
+        JS);
     }
 
     public function backToTypeStep(): void
