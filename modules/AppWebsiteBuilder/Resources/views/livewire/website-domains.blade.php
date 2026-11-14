@@ -14,6 +14,19 @@
             this.removeQueueSiteId = null;
             this.removeQueueSiteName = '';
         },
+        unpublishOpen: false,
+        unpublishSiteId: null,
+        unpublishSiteName: '',
+        openUnpublish(id, name) {
+            this.unpublishSiteId = id;
+            this.unpublishSiteName = name;
+            this.unpublishOpen = true;
+        },
+        closeUnpublish() {
+            this.unpublishOpen = false;
+            this.unpublishSiteId = null;
+            this.unpublishSiteName = '';
+        },
     }"
 >
     @include('appwebsitebuilder::partials.website-builder-session-toasts')
@@ -285,10 +298,9 @@
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                wire:click="unpublishSubdomain({{ (int) $item['id'] }})"
-                                wire:confirm="{{ __('Remove this subdomain? The site will stay as a draft on your dashboard and the public URL will stop working.') }}"
-                                wire:loading.attr="disabled"
-                                wire:target="unpublishSubdomain"
+                                data-site-id="{{ (int) $item['id'] }}"
+                                data-site-name="{{ e($item['name']) }}"
+                                x-on:click="openUnpublish(Number($el.dataset.siteId), $el.dataset.siteName)"
                             >
                                 <i class="fa-solid fa-link-slash text-[11px]"></i>
                                 {{ __('Unpublish') }}
@@ -450,6 +462,68 @@
                             >
                                 <i class="fa-solid fa-trash-can"></i>
                                 {{ __('Remove') }}
+                            </x-ui.button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template x-teleport="body">
+        <div
+            x-cloak
+            x-show="unpublishOpen"
+            class="fixed inset-0 z-[120] flex items-end justify-center overflow-y-auto p-4 sm:items-center sm:p-6"
+            x-on:keydown.escape.window="closeUnpublish()"
+        >
+            <div class="absolute inset-0 bg-white/55 backdrop-blur-[6px] dark:bg-slate-950/55" x-on:click="closeUnpublish()"></div>
+
+            <div x-show="unpublishOpen" x-transition.opacity.scale.90 class="relative w-full max-w-[26rem]">
+                <div
+                    class="overflow-hidden rounded-[1.15rem] border shadow-[0_32px_80px_-34px_rgba(15,23,42,0.32)]"
+                    style="border-color: color-mix(in srgb, var(--theme-border-color) 58%, transparent); background-color: var(--theme-surface-overlay);"
+                >
+                    <div
+                        class="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-6 sm:py-5"
+                        style="border-color: color-mix(in srgb, var(--theme-border-color) 52%, transparent);"
+                    >
+                        <div class="min-w-0">
+                            <h3 class="text-[1.05rem] font-semibold tracking-[-0.02em]" style="color: var(--theme-header-text-color);">
+                                {{ __('Remove this subdomain?') }}
+                            </h3>
+                            <p class="mt-2 text-[15px] leading-7" style="color: var(--theme-muted-text-color);">
+                                <span class="font-semibold" style="color: var(--theme-header-text-color);" x-text="unpublishSiteName"></span>
+                                {{ __('will stay as a draft on your dashboard. The public URL will stop working.') }}
+                            </p>
+                        </div>
+
+                        <button type="button" style="color: var(--theme-muted-text-color);" x-on:click="closeUnpublish()">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+
+                    <div
+                        class="border-t px-5 py-4 sm:px-6"
+                        style="border-color: color-mix(in srgb, var(--theme-border-color) 52%, transparent); background-color: color-mix(in srgb, var(--theme-surface-base) 72%, transparent);"
+                    >
+                        <div class="flex items-center justify-end gap-3">
+                            <x-ui.button type="button" variant="outline" x-on:click="closeUnpublish()">
+                                <i class="fa-solid fa-xmark"></i>
+                                {{ __('Cancel') }}
+                            </x-ui.button>
+                            <x-ui.button
+                                type="button"
+                                variant="danger"
+                                wire:loading.attr="disabled"
+                                wire:target="unpublishSubdomain"
+                                x-on:click="$wire.unpublishSubdomain(unpublishSiteId); closeUnpublish()"
+                            >
+                                <span wire:loading.remove wire:target="unpublishSubdomain">
+                                    <i class="fa-solid fa-link-slash"></i>
+                                    {{ __('Unpublish') }}
+                                </span>
+                                <span wire:loading wire:target="unpublishSubdomain">{{ __('Unpublishing…') }}</span>
                             </x-ui.button>
                         </div>
                     </div>

@@ -14,6 +14,7 @@ class WebsiteAiGenerator
     ) {}
 
     /**
+     * @param  array<string, mixed>  $context
      * @return array<string, mixed>
      */
     public function generate(string $siteType, array $context = []): array

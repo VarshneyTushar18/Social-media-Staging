@@ -10,6 +10,7 @@ use Modules\AppWebsiteBuilder\Models\WebsiteSite;
 use Modules\AppWebsiteBuilder\Support\WebsiteBuilderUi;
 use Modules\AppWebsiteBuilder\Support\WebsiteContentForm;
 use Modules\AppWebsiteBuilder\Support\WebsiteLandingAssets;
+use Modules\AppWebsiteBuilder\Support\WebsiteLandingHtmlExporter;
 
 #[Title('Website preview')]
 class WebsiteSitePreview extends Component
@@ -17,6 +18,8 @@ class WebsiteSitePreview extends Component
     public WebsiteSite $websiteSite;
 
     public bool $editMode = false;
+
+    public bool $codeMode = false;
 
     public string $siteName = '';
 
@@ -71,7 +74,14 @@ class WebsiteSitePreview extends Component
     public function setEditMode(bool $editMode): void
     {
         $this->editMode = $editMode;
+        $this->codeMode = false;
         $this->hydrateFormFromSite();
+    }
+
+    public function setCodeMode(bool $codeMode = true): void
+    {
+        $this->codeMode = $codeMode;
+        $this->editMode = false;
     }
 
     public function saveContent(): void
@@ -107,9 +117,12 @@ class WebsiteSitePreview extends Component
 
         $content = $this->previewContent();
 
+        $exportHtml = WebsiteLandingHtmlExporter::forSite($this->websiteSite, $content);
+
         return view('appwebsitebuilder::livewire.website-site-preview', [
             'site' => $this->websiteSite,
             'content' => $content,
+            'exportHtml' => $exportHtml,
         ])->layout(theme_view('layouts.app', 'app'), [
             'shellArea' => 'user',
             'hideSidebar' => true,

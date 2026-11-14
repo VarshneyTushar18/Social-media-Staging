@@ -50,6 +50,16 @@ class CreateWebsiteWizard extends Component
         $this->guardWebsiteAgent();
     }
 
+    public function chooseAiPath(): void
+    {
+        $this->choosePath('ai');
+    }
+
+    public function chooseTemplatePath(): void
+    {
+        $this->choosePath('template');
+    }
+
     public function choosePath(string $path): void
     {
         abort_unless(in_array($path, ['ai', 'template'], true), 404);
@@ -74,6 +84,12 @@ class CreateWebsiteWizard extends Component
             'siteType' => ['required', 'string', 'min:2', 'max:120'],
         ]);
 
+        if (! WebsiteTemplates::supportsTemplateCatalog(trim($this->siteType))) {
+            $this->addError('siteType', __('Templates not available. Pick an example below.'));
+
+            return;
+        }
+
         $this->step = 3;
         $this->resetErrorBag('generate');
 
@@ -90,6 +106,11 @@ class CreateWebsiteWizard extends Component
     {
         $this->step = 2;
         $this->resetErrorBag(['generate', 'userPrompt']);
+    }
+
+    public function updatedSiteType(): void
+    {
+        $this->resetErrorBag('siteType');
     }
 
     public function generateFromUserPrompt(WebsiteSiteCreator $creator): void

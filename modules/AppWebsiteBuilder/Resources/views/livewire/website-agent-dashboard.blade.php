@@ -297,12 +297,6 @@
                                 <span x-show="publishStep === 'subdomain'" x-cloak>
                                     {{ __('Pick a unique name for') }}
                                     <span class="font-semibold" style="color: var(--theme-header-text-color);" x-text="publishSiteName"></span>.
-                                    @if (filled($publishDomain))
-                                        {{ __('It will be served on our platform domain.') }}
-                                    @else
-                                        {{ __('It will be served under') }}
-                                        <span class="font-semibold" style="color: var(--theme-header-text-color);">/{{ trim(config('modules.appwebsitebuilder.publish_path_prefix', 'sites'), '/') }}/</span>
-                                    @endif
                                 </span>
                             </p>
                         </div>
@@ -436,20 +430,38 @@
                 class="max-w-full overflow-hidden rounded-[1.15rem] border shadow-[0_32px_80px_-34px_rgba(15,23,42,0.32)]"
                 style="border-color: color-mix(in srgb, var(--theme-border-color) 58%, transparent); background-color: var(--theme-surface-overlay);"
             >
+                @php
+                    $publishProviderMeta = \Modules\AppWebsiteBuilder\Support\WebsiteDomainProviders::find($publishDomainProvider);
+                    $publishProviderLabel = $publishProviderMeta['name'] ?? ucfirst($publishDomainProvider);
+                @endphp
                 <div
-                    class="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5"
+                    class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b px-4 py-3 sm:px-5"
                     style="border-color: color-mix(in srgb, var(--theme-border-color) 52%, transparent);"
                 >
                     <button
                         type="button"
-                        class="inline-flex items-center gap-1.5 text-xs font-semibold"
+                        class="inline-flex items-center justify-self-start gap-1.5 text-xs font-semibold"
                         style="color: var(--theme-muted-text-color);"
                         x-on:click="backFromGodaddy()"
                     >
                         <i class="fa-solid fa-arrow-left text-[10px]"></i>
                         {{ __('Back to providers') }}
                     </button>
-                    <button type="button" style="color: var(--theme-muted-text-color);" x-on:click="closePublishSite()">
+                    <div class="min-w-0 text-center">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.16em]" style="color: var(--theme-muted-text-color);">
+                            {{ __('Provider') }}
+                        </p>
+                        <p class="truncate text-sm font-bold" style="color: var(--theme-header-text-color);">
+                            <i class="fa-solid fa-globe mr-1 text-[11px]" style="color: var(--theme-accent);"></i>
+                            {{ $publishProviderLabel }}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="inline-flex justify-self-end"
+                        style="color: var(--theme-muted-text-color);"
+                        x-on:click="closePublishSite()"
+                    >
                         <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
                 </div>

@@ -97,6 +97,9 @@ class WebsiteAgentDashboard extends Component
             'subdomain_slug' => $normalized,
             'custom_domain' => null,
             'custom_domain_connected_at' => null,
+            'pending_custom_domain' => null,
+            'publish_wizard_step' => null,
+            'pending_domain_provider' => null,
             'status' => WebsiteSite::STATUS_PUBLISHED,
             'published_at' => now(),
         ])->save();

@@ -16,6 +16,7 @@ use Modules\AppWebsiteBuilder\Support\WebsiteCustomDomain;
 use Modules\AppWebsiteBuilder\Support\WebsiteCustomDomainDnsVerifier;
 use Modules\AppWebsiteBuilder\Support\WebsiteDomainInputValidator;
 use Modules\AppWebsiteBuilder\Support\WebsiteDomainRegistrarResolver;
+use Modules\AppWebsiteBuilder\Support\WebsiteDomainSearchResults;
 use Modules\AppWebsiteBuilder\Support\WebsitePublishConfig;
 
 #[Title('Publish website')]
@@ -77,8 +78,9 @@ class WebsitePublishWizard extends Component
         $pending = WebsiteDomainInputValidator::normalizeRegisteredDomain(
             (string) ($websiteSite->pending_custom_domain ?? '')
         );
+        $pendingProvider = strtolower(trim((string) ($websiteSite->pending_domain_provider ?? '')));
 
-        if ($pending !== '') {
+        if ($pending !== '' && $pendingProvider === $domainProvider) {
             $this->selectedDomain = $pending;
             $this->checkoutUrl = WebsiteDomainRegistrarResolver::resolve($domainProvider)->checkoutUrl($pending);
             $this->resumePendingSelection = true;
@@ -144,10 +146,11 @@ class WebsitePublishWizard extends Component
         }
 
         try {
-            $rows = $client->searchWithAvailability($query, 12);
+            $rows = $client->searchWithAvailability($query, WebsiteDomainSearchResults::DEFAULT_LIMIT);
             $this->searchResults = array_values(array_filter(
                 $rows,
                 fn (array $row): bool => (bool) ($row['available'] ?? false)
+                    && ($row['registerable'] ?? true) !== false
             ));
         } catch (\Throwable $e) {
             $this->searchError = $e->getMessage();
@@ -304,20 +307,6 @@ class WebsitePublishWizard extends Component
         $domain = $validated['domain'];
         $this->assertDomainNotUsedByAnotherSite($domain);
 
-        $client = $this->registrar();
-
-        if (! $client->isDomainAvailable($domain)) {
-            $this->searchError = __('Sorry, this domain was just taken. Please pick another.');
-            $this->selectedDomain = null;
-            $this->checkoutUrl = null;
-            $this->step = 'search';
-            $this->clearPendingDomain();
-
-            throw ValidationException::withMessages([
-                'domain' => __('Sorry, this domain was just taken. Please pick another.'),
-            ]);
-        }
-
         $this->selectedDomain = $domain;
         $this->persistPendingDomain('register');
         $this->step = 'register';
@@ -337,12 +326,6 @@ class WebsitePublishWizard extends Component
 
         $domain = $validated['domain'];
         $client = $this->registrar();
-
-        if (! $client->isDomainAvailable($domain)) {
-            throw ValidationException::withMessages([
-                'domain' => __('This domain is no longer available for registration. Search for another name.'),
-            ]);
-        }
 
         if (! filled($this->checkoutUrl)) {
             $this->checkoutUrl = $client->checkoutUrl($domain);
@@ -417,6 +400,7 @@ class WebsitePublishWizard extends Component
             'custom_domain_connected_at' => now(),
             'pending_custom_domain' => null,
             'publish_wizard_step' => null,
+            'pending_domain_provider' => null,
             'status' => WebsiteSite::STATUS_PUBLISHED,
             'published_at' => $this->websiteSite->published_at ?? now(),
             'subdomain_slug' => null,
@@ -499,6 +483,7 @@ class WebsitePublishWizard extends Component
         $this->websiteSite->forceFill([
             'pending_custom_domain' => $validated['domain'],
             'publish_wizard_step' => $step,
+            'pending_domain_provider' => strtolower(trim($this->domainProvider)),
         ])->save();
 
         $this->websiteSite->refresh();
@@ -509,6 +494,7 @@ class WebsitePublishWizard extends Component
         $this->websiteSite->forceFill([
             'pending_custom_domain' => null,
             'publish_wizard_step' => null,
+            'pending_domain_provider' => null,
         ])->save();
 
         $this->websiteSite->refresh();

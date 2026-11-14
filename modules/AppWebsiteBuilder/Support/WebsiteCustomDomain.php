@@ -14,7 +14,7 @@ class WebsiteCustomDomain
     }
 
     /**
-     * @return list<array{type: string, host: string, points_to: string, ttl: string, notes: ?string}>
+     * @return list<array{type: string, host: string, points_to: string, ttl: string, notes: ?string, required: bool}>
      */
     public static function dnsRecords(): array
     {
@@ -33,6 +33,7 @@ class WebsiteCustomDomain
                     'points_to' => $aRecord,
                     'ttl' => '600',
                     'notes' => __('Root domain (apex)'),
+                    'required' => true,
                 ],
                 [
                     'type' => 'CNAME',
@@ -40,6 +41,7 @@ class WebsiteCustomDomain
                     'points_to' => $appHost,
                     'ttl' => '600',
                     'notes' => __('Optional www subdomain'),
+                    'required' => false,
                 ],
             ];
         }
@@ -52,6 +54,7 @@ class WebsiteCustomDomain
                     'points_to' => $appHost,
                     'ttl' => '600',
                     'notes' => __('Some registrars use ALIAS/ANAME for root @ to :host', ['host' => $appHost]),
+                    'required' => true,
                 ],
                 [
                     'type' => 'CNAME',
@@ -59,6 +62,7 @@ class WebsiteCustomDomain
                     'points_to' => $publishDomain,
                     'ttl' => '600',
                     'notes' => null,
+                    'required' => false,
                 ],
             ];
         }
@@ -70,6 +74,7 @@ class WebsiteCustomDomain
                 'points_to' => $appHost,
                 'ttl' => '600',
                 'notes' => __('Point www to your app host'),
+                'required' => false,
             ],
             [
                 'type' => 'A',
@@ -77,6 +82,7 @@ class WebsiteCustomDomain
                 'points_to' => __('Use your server IP (ask your host)'),
                 'ttl' => '600',
                 'notes' => __('Or redirect apex to www at your registrar'),
+                'required' => false,
             ],
         ];
     }

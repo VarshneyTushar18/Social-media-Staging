@@ -110,7 +110,7 @@
             'flex w-full min-w-0 max-w-full flex-col',
             'overflow-visible' => $embedded,
             'overflow-hidden' => ! $embedded,
-            'mb-0 !shadow-none' => $embedded,
+            'mb-0 !rounded-none !border-0 !bg-transparent !shadow-none' => $embedded,
         ])
     >
         @unless ($embedded)
@@ -172,27 +172,17 @@
                     <x-ui.alert variant="danger" :description="$message" inline />
                 @enderror
 
-                <div
-                    wire:loading.delay.none.flex
+                <p
+                    wire:loading.delay.none
                     wire:target="searchDomains"
-                    class="hidden flex-col gap-2 rounded-xl border p-4"
-                    style="border-color: var(--theme-border-color);"
+                    class="inline-flex items-center gap-2 text-sm font-medium"
+                    style="color: var(--theme-muted-text-color);"
                     aria-live="polite"
                     aria-busy="true"
                 >
-                    @for ($skeletonIndex = 0; $skeletonIndex < 6; $skeletonIndex++)
-                        <div class="flex items-center justify-between gap-3 py-1">
-                            <div class="min-w-0 flex-1 space-y-2">
-                                <div class="h-4 w-2/3 max-w-xs animate-pulse rounded-md" style="background: rgba(var(--theme-border-color-rgb), 0.35);"></div>
-                                <div class="h-3 w-1/3 animate-pulse rounded-md" style="background: rgba(var(--theme-border-color-rgb), 0.22);"></div>
-                            </div>
-                            <div class="h-9 w-20 animate-pulse rounded-xl" style="background: rgba(var(--theme-border-color-rgb), 0.28);"></div>
-                        </div>
-                    @endfor
-                    <p class="pt-1 text-sm font-medium" style="color: var(--theme-muted-text-color);">
-                        {{ __('Checking available domains…') }}
-                    </p>
-                </div>
+                    <i class="fa-solid fa-spinner fa-spin text-xs" style="color: var(--theme-accent);"></i>
+                    {{ __('Searching domains…') }}
+                </p>
 
                 @if ($searchError && ! $searchInputError)
                     <div wire:loading.remove wire:target="searchDomains">
@@ -204,7 +194,7 @@
                     <ul
                         wire:loading.delay.none.remove
                         wire:target="searchDomains"
-                        class="divide-y rounded-xl border max-h-[min(45vh,22rem)] overflow-y-auto"
+                        class="divide-y rounded-xl border max-h-[min(55vh,28rem)] overflow-y-auto"
                         style="border-color: var(--theme-border-color);"
                     >
                         @foreach ($searchResults as $loopIndex => $row)
@@ -212,14 +202,13 @@
                                 wire:key="domain-{{ $row['domain'] }}"
                                 class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition"
                             >
-                                <div class="min-w-0">
-                                    <p class="truncate font-semibold" style="color: var(--theme-header-text-color);">{{ $row['display_host'] }}</p>
-                                    <p class="text-xs" style="color: var(--theme-muted-text-color);">
-                                        {{ __('Available') }}
-                                        @if ($loopIndex === 0)
-                                            <span class="ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase" style="background: rgba(var(--theme-accent-rgb), 0.15); color: var(--theme-accent);">{{ __('Suggested') }}</span>
-                                        @endif
+                                <div class="min-w-0 flex min-w-0 flex-wrap items-center gap-2">
+                                    <p class="truncate font-semibold" style="color: var(--theme-header-text-color);">
+                                        {{ $bareHostFormatter($row['domain']) }}
                                     </p>
+                                    @if ($loopIndex === 0)
+                                        <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase" style="background: rgba(var(--theme-accent-rgb), 0.15); color: var(--theme-accent);">{{ __('Suggested') }}</span>
+                                    @endif
                                 </div>
                                 <x-ui.button
                                     type="button"

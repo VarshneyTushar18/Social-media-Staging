@@ -48,7 +48,9 @@
 
             <div class="flex flex-col items-end gap-2 text-right md:justify-self-end">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em]" style="color: var(--theme-accent);">
-                    @if ($editMode)
+                    @if ($codeMode)
+                        {{ __('Website code') }}
+                    @elseif ($editMode)
                         {{ __('Edit content') }}
                     @else
                         {{ __('Responsive preview') }}
@@ -65,7 +67,7 @@
                         type="button"
                         class="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
                         wire:click="setEditMode(false)"
-                        @style($editMode ? 'color: var(--theme-muted-text-color);' : 'background-color: var(--theme-accent); color: #fff;')
+                        @style($editMode || $codeMode ? 'color: var(--theme-muted-text-color);' : 'background-color: var(--theme-accent); color: #fff;')
                     >
                         {{ __('Preview') }}
                     </button>
@@ -78,6 +80,15 @@
                         <i class="fa-solid fa-pen-to-square mr-1 text-[10px]"></i>
                         {{ __('Edit') }}
                     </button>
+                    <button
+                        type="button"
+                        class="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+                        wire:click="setCodeMode"
+                        @style($codeMode ? 'background-color: var(--theme-accent); color: #fff;' : 'color: var(--theme-muted-text-color);')
+                    >
+                        <i class="fa-solid fa-code mr-1 text-[10px]"></i>
+                        {{ __('Code') }}
+                    </button>
                 </div>
             </div>
         </div>
@@ -86,6 +97,37 @@
             'grid gap-5',
             'lg:grid-cols-[1fr_minmax(280px,360px)]' => $editMode,
         ])>
+            @if ($codeMode)
+                <x-ui.card
+                    class="min-w-0 p-8 sm:p-10 lg:col-span-2"
+                    x-data="{
+                        downloadIndexHtml() {
+                            const blob = new Blob([$refs.siteExportCode.value], { type: 'text/html;charset=utf-8' });
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(blob);
+                            link.download = 'index.html';
+                            link.click();
+                            URL.revokeObjectURL(link.href);
+                        },
+                    }"
+                >
+                    <div class="flex flex-col items-center justify-center gap-4 text-center">
+                        <p class="text-sm font-semibold font-mono" style="color: var(--theme-header-text-color);">index.html</p>
+                        <p class="max-w-md text-xs" style="color: var(--theme-muted-text-color);">
+                            {{ __('Download your site as a single HTML file with image links included.') }}
+                        </p>
+                        <x-ui.button
+                            type="button"
+                            size="sm"
+                            x-on:click="downloadIndexHtml()"
+                        >
+                            <i class="fa-solid fa-download text-[11px]"></i>
+                            {{ __('Download index.html') }}
+                        </x-ui.button>
+                    </div>
+                    <textarea x-ref="siteExportCode" class="sr-only" readonly tabindex="-1" aria-hidden="true">{{ $exportHtml }}</textarea>
+                </x-ui.card>
+            @else
             <x-ui.card class="overflow-hidden border-0 p-3 shadow-sm sm:p-4" style="background: rgba(var(--theme-border-color-rgb), 0.2);">
             <div class="flex justify-center">
                 <div
@@ -135,6 +177,7 @@
                 </div>
             </div>
         </x-ui.card>
+            @endif
 
             @if ($editMode)
                 <x-ui.card class="max-h-[calc(75vh+4rem)] overflow-y-auto p-4 sm:p-5">
@@ -147,7 +190,9 @@
         </div>
 
         <p class="mt-4 text-center text-xs" style="color: var(--theme-muted-text-color);">
-            @if ($editMode)
+            @if ($codeMode)
+                {{ __('Download index.html, then upload it to any web host.') }}
+            @elseif ($editMode)
                 {{ __('Edit mode: save when you are happy with the copy, then switch back to Preview.') }}
             @else
                 {{ __('Scroll inside the frame to review each section on laptop, tablet, and mobile.') }}

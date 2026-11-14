@@ -192,9 +192,25 @@ class WebsiteTemplates
         return self::inferGalleryExampleSlug($siteType);
     }
 
+    public static function supportsTemplateCatalog(string $siteType): bool
+    {
+        $siteType = trim($siteType);
+
+        if ($siteType === '') {
+            return false;
+        }
+
+        return self::resolveGalleryExampleSlug($siteType) !== null;
+    }
+
     protected static function inferGalleryExampleSlug(string $siteType): ?string
     {
         $category = self::resolveCategory($siteType);
+
+        if ($category === 'general') {
+            return null;
+        }
+
         $niche = $category === 'local' ? self::resolveLocalNiche($siteType) : 'general';
 
         return match (true) {
@@ -205,7 +221,7 @@ class WebsiteTemplates
             $niche === 'cleaning', $niche === 'trades' => 'cleaning',
             $niche === 'beauty' => 'beauty',
             $category === 'local' => 'cleaning',
-            default => 'beauty',
+            default => null,
         };
     }
 
@@ -216,25 +232,26 @@ class WebsiteTemplates
      */
     public static function catalogFor(string $siteType): array
     {
-        $slug = self::resolveGalleryExampleSlug($siteType) ?? self::inferGalleryExampleSlug($siteType);
+        $slug = self::resolveGalleryExampleSlug($siteType);
 
-        if ($slug !== null) {
-            $matched = self::matchedTemplatesForSiteType($siteType);
-            $result = self::galleryRowsForExclusiveSlug($slug, $siteType, $matched);
-
-            if ($result !== []) {
-                $result = self::ensureDistinctPreviewUrls(array_slice($result, 0, 5), $matched['niche']);
-
-                return self::stripTemplateSortKeys($result);
-            }
+        if ($slug === null) {
+            return [];
         }
 
         $matched = self::matchedTemplatesForSiteType($siteType);
+        $result = self::galleryRowsForExclusiveSlug($slug, $siteType, $matched);
+
+        if ($result !== []) {
+            $result = self::ensureDistinctPreviewUrls(array_slice($result, 0, 5), $matched['niche']);
+
+            return self::stripTemplateSortKeys($result);
+        }
+
         $result = $matched['items'];
         $niche = $matched['niche'];
 
         if ($result === []) {
-            return self::catalogFor(__('Business'));
+            return [];
         }
 
         $result = self::ensureDistinctPreviewUrls(array_slice($result, 0, 5), $niche);

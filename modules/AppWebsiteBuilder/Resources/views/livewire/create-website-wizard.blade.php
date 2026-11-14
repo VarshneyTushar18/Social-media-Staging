@@ -44,9 +44,11 @@
                             {{ __('Creating:') }}
                             <span class="font-semibold" style="color: var(--theme-header-text-color);">{{ $siteType }}</span>
                         </p>
-                        <p class="text-xs" style="color: var(--theme-muted-text-color);">
-                            {{ __('Templates below are chosen for this website type.') }}
-                        </p>
+                        @if ($templates !== [])
+                            <p class="text-xs" style="color: var(--theme-muted-text-color);">
+                                {{ __('Templates below are chosen for this website type.') }}
+                            </p>
+                        @endif
                     </div>
                 @endif
 
@@ -63,6 +65,14 @@
                     />
                 @endif
 
+                @if ($templates === [])
+                    <x-ui.alert
+                        class="mt-6"
+                        variant="warning"
+                        :description="__('Templates not available. Pick an example below.')"
+                        inline
+                    />
+                @else
                 <div
                     @class([
                         'mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3',
@@ -75,23 +85,18 @@
                     x-init="$nextTick(() => requestAnimationFrame(() => window.TemplateCardPreview?.scheduleBoot?.(true)))"
                 >
                     @foreach ($templates as $template)
-                        <button
-                            type="button"
+                        @php
+                            $cardEmbedUrl = route('portal.agents.website.templates.card-preview', [
+                                'templateId' => $template['id'],
+                                'card' => 1,
+                                'type' => $siteType,
+                            ]);
+                        @endphp
+                        <article
                             wire:key="wizard-template-{{ $template['id'] }}"
-                            wire:click="selectTemplate({{ json_encode($template['id']) }})"
-                            wire:loading.attr="disabled"
-                            wire:target="selectTemplate"
-                            @disabled($isCreatingFromTemplate)
-                            class="group overflow-hidden rounded-[var(--theme-card-radius,0.875rem)] border text-left transition hover:-translate-y-px hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                            class="flex h-full flex-col overflow-hidden rounded-[var(--theme-card-radius,0.875rem)] border shadow-sm transition hover:-translate-y-px hover:shadow-md"
                             style="border-color: var(--theme-border-color); background: var(--theme-surface-overlay);"
                         >
-                            @php
-                                $cardEmbedUrl = route('portal.agents.website.templates.card-preview', [
-                                    'templateId' => $template['id'],
-                                    'card' => 1,
-                                    'type' => $siteType,
-                                ]);
-                            @endphp
                             <div
                                 class="relative h-[min(70vh,720px)] w-full shrink-0 overflow-hidden border-b sm:h-[min(62vh,680px)] lg:h-[min(58vh,640px)]"
                                 style="border-color: var(--theme-border-color); background: rgba(var(--theme-border-color-rgb), 0.08);"
@@ -103,7 +108,7 @@
                                     'class' => 'absolute inset-0 h-full w-full',
                                 ])
                             </div>
-                            <div class="space-y-1.5 p-4 sm:p-5">
+                            <div class="flex flex-1 flex-col gap-3 p-4 sm:p-5">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <p class="font-semibold" style="color: var(--theme-header-text-color);">{{ $template['name'] }}</p>
                                     @if (! empty($template['recommended']))
@@ -114,16 +119,22 @@
                                     @endif
                                 </div>
                                 <p class="text-sm leading-relaxed" style="color: var(--theme-muted-text-color);">{{ $template['description'] }}</p>
-                                <p class="pt-1 text-xs font-semibold" style="color: var(--theme-accent);">
-                                    {{ __('Use this template') }}
-                                    <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i>
-                                </p>
+                                <x-ui.button
+                                    type="button"
+                                    class="mt-auto w-full justify-center sm:w-fit"
+                                    wire:click="selectTemplate({{ json_encode($template['id']) }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="selectTemplate"
+                                    :disabled="$isCreatingFromTemplate"
+                                >
+                                    <span wire:loading.remove wire:target="selectTemplate">{{ __('Use this template') }}</span>
+                                    <span wire:loading wire:target="selectTemplate">{{ __('Creating…') }}</span>
+                                </x-ui.button>
                             </div>
-                        </button>
+                        </article>
                     @endforeach
                 </div>
-
-                @include('appwebsitebuilder::partials.template-card-preview-script')
+                @endif
             </x-ui.card>
         </div>
     @else
@@ -139,18 +150,14 @@
                 @include('appwebsitebuilder::partials.create-website-progress', ['step' => $step, 'buildPath' => $buildPath])
 
                 @if ($step === 1)
-                    <div
-                        class="mt-8 space-y-4"
-                        wire:loading.class="pointer-events-none opacity-60"
-                        wire:target="choosePath"
-                    >
+                    <div class="mt-8 space-y-4">
                         <button
                             type="button"
-                            wire:click="choosePath('ai')"
+                            wire:click="chooseAiPath"
                             wire:loading.attr="disabled"
-                            wire:target="choosePath"
-                            class="w-full rounded-[var(--theme-card-radius,0.875rem)] border p-5 text-left transition hover:shadow-md sm:p-6 disabled:cursor-not-allowed disabled:opacity-60"
-                            style="border-color: rgba(var(--theme-accent-rgb), 0.35); background: color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-overlay));"
+                            wire:loading.class="pointer-events-none opacity-60"
+                            wire:target="chooseAiPath"
+                            class="wizard-method-option group w-full rounded-[var(--theme-card-radius,0.875rem)] border p-5 text-left sm:p-6 disabled:cursor-not-allowed"
                         >
                             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="space-y-2">
@@ -172,7 +179,7 @@
                                     </p>
                                 </div>
                                 <span
-                                    class="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl text-xl"
+                                    class="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl text-xl transition duration-200 group-hover:scale-105"
                                     style="background: rgba(var(--theme-accent-rgb), 0.12); color: var(--theme-accent);"
                                 >
                                     <i class="fa-solid fa-wand-magic-sparkles"></i>
@@ -182,15 +189,15 @@
 
                         <button
                             type="button"
-                            wire:click="choosePath('template')"
+                            wire:click="chooseTemplatePath"
                             wire:loading.attr="disabled"
-                            wire:target="choosePath"
-                            class="w-full rounded-[var(--theme-card-radius,0.875rem)] border p-5 text-left transition hover:shadow-sm sm:p-6 disabled:cursor-not-allowed disabled:opacity-60"
-                            style="border-color: var(--theme-border-color); background: var(--theme-surface-overlay);"
+                            wire:loading.class="pointer-events-none opacity-60"
+                            wire:target="chooseTemplatePath"
+                            class="wizard-method-option group w-full rounded-[var(--theme-card-radius,0.875rem)] border p-5 text-left sm:p-6 disabled:cursor-not-allowed"
                         >
                             <div class="flex items-start gap-4">
                                 <span
-                                    class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                                    class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition duration-200 group-hover:scale-105"
                                     style="background: rgba(var(--theme-accent-rgb), 0.1); color: var(--theme-accent);"
                                 >
                                     <i class="fa-solid fa-layer-group"></i>
@@ -207,27 +214,35 @@
                         </button>
                     </div>
                 @elseif ($step === 2 && $buildPath === 'template')
-                    <p class="mt-2 text-sm" style="color: var(--theme-muted-text-color);">
-                        {{ __('Method:') }}
-                        <span class="font-semibold" style="color: var(--theme-header-text-color);">{{ __('Start with a template') }}</span>
-                    </p>
-
-                    <form wire:submit="continueFromType" class="mt-6 space-y-6">
+                    <form
+                        wire:submit="continueFromType"
+                        class="mt-6 space-y-6"
+                        wire:loading.class="pointer-events-none"
+                        wire:target="continueFromType"
+                    >
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
                             <div class="min-w-0 flex-1">
                                 <x-ui.input
-                                    wire:model.live="siteType"
+                                    wire:model="siteType"
+                                    wire:loading.attr="readonly"
+                                    wire:target="continueFromType"
                                     :label="__('Website type')"
                                     placeholder="{{ __('e.g. E-commerce Store') }}"
                                     autocomplete="off"
                                 />
                             </div>
-                            <x-ui.button type="submit" class="h-11 shrink-0 justify-center px-8 sm:min-w-[8.5rem]">
-                                {{ __('Continue') }}
+                            <x-ui.button
+                                type="submit"
+                                class="h-11 shrink-0 justify-center px-8 sm:min-w-[8.5rem]"
+                                wire:loading.attr="disabled"
+                                wire:target="continueFromType"
+                            >
+                                <span wire:loading.remove wire:target="continueFromType">{{ __('Continue') }}</span>
+                                <span wire:loading wire:target="continueFromType">{{ __('Checking…') }}</span>
                             </x-ui.button>
                         </div>
                         @error('siteType')
-                            <p class="text-sm font-medium" style="color: var(--theme-danger-color);">{{ $message }}</p>
+                            <x-ui.alert variant="warning" :description="$message" inline />
                         @enderror
 
                         <div>
@@ -262,11 +277,6 @@
                         </button>
                     </div>
                 @elseif ($step === 2 && $buildPath === 'ai')
-                    <p class="mt-2 text-sm" style="color: var(--theme-muted-text-color);">
-                        {{ __('Method:') }}
-                        <span class="font-semibold" style="color: var(--theme-header-text-color);">{{ __('Create with your prompt') }}</span>
-                    </p>
-
                     @error('generate')
                         <x-ui.alert class="mt-4" variant="danger" :description="$message" inline />
                     @enderror
@@ -292,7 +302,7 @@
                                 id="website-ai-prompt"
                                 wire:model="userPrompt"
                                 rows="8"
-                                @disabled($isGenerating)
+                                @if ($isGenerating) disabled @endif
                                 placeholder="{{ __('e.g. Online fashion boutique for women. Elegant tone. Highlight new arrivals, free returns, and style guide. CTA: Shop the collection.') }}"
                                 class="flex min-h-[11rem] w-full border px-4 py-3.5 text-sm leading-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-[var(--theme-input-placeholder)] focus:border-[var(--theme-accent)] focus:ring-4 focus:ring-[color:rgba(var(--theme-accent-rgb),0.10)] disabled:cursor-not-allowed disabled:opacity-60"
                                 style="border-radius: var(--theme-input-radius, 0.75rem); border-color: var(--theme-border-color); background-color: var(--theme-input-surface); color: var(--theme-input-text);"
@@ -302,17 +312,13 @@
                             @enderror
                         </div>
 
-                        <p class="text-xs" style="color: var(--theme-muted-text-color);">
-                            {{ __('Credits apply when the AI draft is created successfully.') }}
-                        </p>
-
                         <div class="flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between" style="border-color: rgba(var(--theme-border-color-rgb), 0.55);">
                             <button
                                 type="button"
                                 wire:click="backToMethodStep"
                                 class="text-sm font-medium transition hover:opacity-80"
                                 style="color: var(--theme-muted-text-color);"
-                                @disabled($isGenerating)
+                                @if ($isGenerating) disabled @endif
                             >
                                 <i class="fa-solid fa-arrow-left mr-1 text-xs"></i>
                                 {{ __('Back to method') }}
@@ -335,4 +341,30 @@
             </x-ui.card>
         </div>
     @endif
+
+    <style>
+        .wizard-method-option {
+            border-color: var(--theme-border-color);
+            background: var(--theme-surface-overlay);
+            transition:
+                transform 0.2s ease,
+                box-shadow 0.2s ease,
+                border-color 0.2s ease,
+                background 0.2s ease;
+        }
+
+        .wizard-method-option:hover:not(:disabled) {
+            transform: translateY(-2px);
+            border-color: rgba(var(--theme-accent-rgb), 0.45);
+            background: color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-overlay));
+            box-shadow: 0 4px 12px -6px rgba(var(--theme-accent-rgb), 0.25);
+        }
+
+        .wizard-method-option:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px -4px rgba(var(--theme-accent-rgb), 0.2);
+        }
+    </style>
+
+    @include('appwebsitebuilder::partials.template-card-preview-script')
 </div>

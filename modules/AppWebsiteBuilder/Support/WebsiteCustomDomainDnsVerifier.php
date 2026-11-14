@@ -33,6 +33,8 @@ class WebsiteCustomDomainDnsVerifier
             $hostLabel = (string) ($row['host'] ?? '@');
             $expectedTarget = (string) ($row['points_to'] ?? '');
 
+            $required = (bool) ($row['required'] ?? true);
+
             if ($expectedTarget === '' || str_contains($expectedTarget, ' ')) {
                 $results[] = [
                     'type' => $type,
@@ -41,7 +43,10 @@ class WebsiteCustomDomainDnsVerifier
                     'status' => self::STATUS_PENDING,
                     'observed' => null,
                 ];
-                $verified = false;
+
+                if ($required) {
+                    $verified = false;
+                }
 
                 continue;
             }
@@ -54,7 +59,10 @@ class WebsiteCustomDomainDnsVerifier
                     'status' => self::STATUS_WRONG,
                     'observed' => null,
                 ];
-                $verified = false;
+
+                if ($required) {
+                    $verified = false;
+                }
 
                 continue;
             }
@@ -71,9 +79,15 @@ class WebsiteCustomDomainDnsVerifier
                 'observed' => $observed !== [] ? implode(', ', $observed) : null,
             ];
 
-            if ($status !== self::STATUS_CONNECTED) {
+            if ($required && $status !== self::STATUS_CONNECTED) {
                 $verified = false;
             }
+        }
+
+        if ($results === []) {
+            $verified = false;
+        } elseif (! collect($expectedRows)->contains(fn (array $row): bool => (bool) ($row['required'] ?? true))) {
+            $verified = false;
         }
 
         return ['verified' => $verified, 'records' => $results];

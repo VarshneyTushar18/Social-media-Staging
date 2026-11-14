@@ -26,7 +26,7 @@ class NamecheapDomainClient
     /**
      * @return list<array{domain: string, display_host: string, available: bool, checkout_url: string}>
      */
-    public function searchWithAvailability(string $query, int $limit = 12): array
+    public function searchWithAvailability(string $query, int $limit = 24): array
     {
         if (! $this->isConfigured()) {
             throw new \RuntimeException(__('Namecheap API is not configured. Add NAMECHEAP_API_* and NAMECHEAP_CLIENT_IP to .env.'));
@@ -38,7 +38,7 @@ class NamecheapDomainClient
             return [];
         }
 
-        $candidates = $this->collectCandidates($seed, $limit);
+        $candidates = $this->collectCandidates($seed, WebsiteDomainSearchResults::candidatePoolSize($limit));
 
         if ($candidates === []) {
             return [];
@@ -46,16 +46,20 @@ class NamecheapDomainClient
 
         $rows = [];
 
-        foreach ($this->checkAvailability($candidates) as $domain) {
-            $rows[] = [
-                'domain' => $domain,
+        foreach ($this->checkAvailabilityRows($candidates) as $row) {
+            if (! (bool) ($row['available'] ?? false)) {
+                continue;
+            }
+
+            $domain = (string) ($row['domain'] ?? '');
+            $rows[] = array_merge($row, [
                 'display_host' => $this->displayHost($domain),
-                'available' => true,
                 'checkout_url' => $this->checkoutUrl($domain),
-            ];
+                'registerable' => (bool) ($row['registerable'] ?? true),
+            ]);
         }
 
-        return array_slice($rows, 0, $limit);
+        return WebsiteDomainSearchResults::sortByPriceAsc($rows, $limit);
     }
 
     public function isDomainAvailable(string $domain): bool
@@ -70,7 +74,13 @@ class NamecheapDomainClient
             return false;
         }
 
-        return in_array($domain, $this->checkAvailability([$domain]), true);
+        foreach ($this->checkAvailabilityRows([$domain]) as $row) {
+            if ((string) ($row['domain'] ?? '') === $domain) {
+                return (bool) ($row['available'] ?? false);
+            }
+        }
+
+        return false;
     }
 
     public function checkoutUrl(string $domain): string
@@ -111,7 +121,7 @@ class NamecheapDomainClient
             return [];
         }
 
-        $tlds = ['com', 'net', 'org', 'io', 'co', 'app', 'site', 'online', 'store', 'xyz'];
+        $tlds = ['com', 'net', 'org', 'io', 'co', 'app', 'site', 'online', 'store', 'xyz', 'info', 'biz', 'live'];
 
         foreach ($tlds as $tld) {
             $candidate = $this->normalizeDomain($slug.'.'.$tld);
@@ -135,15 +145,15 @@ class NamecheapDomainClient
 
     /**
      * @param  list<string>  $domains
-     * @return list<string>
+     * @return list<array{domain: string, available: bool, price_usd?: ?float, price_label?: ?string, is_premium?: bool}>
      */
-    protected function checkAvailability(array $domains): array
+    protected function checkAvailabilityRows(array $domains): array
     {
         $response = $this->request('namecheap.domains.check', [
             'DomainList' => implode(',', $domains),
         ]);
 
-        $available = [];
+        $rows = [];
 
         foreach ($this->domainCheckResults($response) as $result) {
             $attrs = $result->attributes();
@@ -154,13 +164,20 @@ class NamecheapDomainClient
             }
 
             $isAvailable = strtolower((string) ($attrs['Available'] ?? 'false')) === 'true';
+            $isPremium = strtolower((string) ($attrs['IsPremiumName'] ?? 'false')) === 'true';
+            $premiumPrice = (float) ($attrs['PremiumRegistrationPrice'] ?? 0);
+            $priceUsd = $isPremium && $premiumPrice > 0 ? round($premiumPrice, 2) : null;
 
-            if ($isAvailable) {
-                $available[] = $domain;
-            }
+            $rows[] = [
+                'domain' => $domain,
+                'available' => $isAvailable,
+                'registerable' => $isAvailable,
+                'price_usd' => $priceUsd,
+                'is_premium' => $isPremium,
+            ];
         }
 
-        return $available;
+        return $rows;
     }
 
     protected function normalizeSearchQuery(string $query): string

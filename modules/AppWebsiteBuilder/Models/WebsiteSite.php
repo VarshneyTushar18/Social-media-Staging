@@ -26,6 +26,7 @@ class WebsiteSite extends Model
         'custom_domain_connected_at',
         'pending_custom_domain',
         'publish_wizard_step',
+        'pending_domain_provider',
         'generated_content',
         'published_at',
     ];

@@ -25,7 +25,7 @@ class GoDaddyDomainClient
     /**
      * @return list<array{domain: string, display_host: string, available: bool, checkout_url: string}>
      */
-    public function searchWithAvailability(string $query, int $limit = 12): array
+    public function searchWithAvailability(string $query, int $limit = 24): array
     {
         if (! $this->isConfigured()) {
             throw new \RuntimeException(__('GoDaddy API credentials are not configured.'));
@@ -37,33 +37,29 @@ class GoDaddyDomainClient
             return [];
         }
 
-        $candidateLimit = min(18, $limit + 4);
+        $candidateLimit = WebsiteDomainSearchResults::candidatePoolSize($limit);
         $candidates = $this->collectCandidates($seed, $candidateLimit);
-
         $availableRows = [];
 
         foreach (array_chunk($candidates, 12) as $chunk) {
-            $rows = $this->availabilityForDomains($chunk);
+            $rows = $this->availabilityForDomains($chunk, true);
 
             foreach ($rows as $row) {
-                if ((bool) ($row['available'] ?? false)) {
+                if ($this->isRegisterableAvailability($row)) {
                     $availableRows[] = $row;
                 }
             }
 
-            if (count($availableRows) >= $limit) {
+            $formattedSoFar = array_map(fn (array $row): array => $this->formatRow($row), $availableRows);
+
+            if (count(WebsiteDomainSearchResults::sortByPriceAsc($formattedSoFar, $limit)) >= $limit) {
                 break;
             }
         }
 
-        usort($availableRows, fn (array $a, array $b): int => strcmp(
-            (string) ($a['domain'] ?? ''),
-            (string) ($b['domain'] ?? '')
-        ));
-
         $formatted = array_map(fn (array $row): array => $this->formatRow($row), $availableRows);
 
-        return array_slice($formatted, 0, $limit);
+        return WebsiteDomainSearchResults::sortByPriceAsc($formatted, $limit);
     }
 
     public function isDomainAvailable(string $domain): bool
@@ -84,7 +80,23 @@ class GoDaddyDomainClient
             return false;
         }
 
-        return (bool) ($rows[0]['available'] ?? false);
+        return $this->isRegisterableAvailability($rows[0]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function isRegisterableAvailability(array $row): bool
+    {
+        if (! (bool) ($row['available'] ?? false)) {
+            return false;
+        }
+
+        if (array_key_exists('definitive', $row) && $row['definitive'] === false) {
+            return false;
+        }
+
+        return true;
     }
 
     public function checkoutUrl(string $domain): string
@@ -113,7 +125,7 @@ class GoDaddyDomainClient
 
         $response = $this->request('get', '/v1/domains/suggest', [
             'query' => $seed,
-            'limit' => min(24, max($limit, 12)),
+            'limit' => min(40, max($limit, 16)),
             'waitMs' => 250,
         ]);
 
@@ -138,22 +150,23 @@ class GoDaddyDomainClient
      * @param  list<string>  $domains
      * @return list<array<string, mixed>>
      */
-    protected function availabilityForDomains(array $domains): array
+    protected function availabilityForDomains(array $domains, bool $includePricing = false): array
     {
         if ($domains === []) {
             return [];
         }
 
         $headers = array_merge($this->authHeaders(), ['Accept' => 'application/json']);
+        $checkType = $includePricing ? 'FULL' : 'FAST';
 
-        $responses = Http::pool(function ($pool) use ($domains, $headers) {
+        $responses = Http::pool(function ($pool) use ($domains, $headers, $checkType) {
             foreach ($domains as $index => $domain) {
                 $pool->as((string) $index)
                     ->timeout(25)
                     ->withHeaders($headers)
                     ->get($this->baseUrl().'/v1/domains/available', [
                         'domain' => $domain,
-                        'checkType' => 'FAST',
+                        'checkType' => $checkType,
                     ]);
             }
         });
@@ -191,18 +204,29 @@ class GoDaddyDomainClient
 
     /**
      * @param  array<string, mixed>  $row
-     * @return array{domain: string, display_host: string, available: bool, checkout_url: string}
+     * @return array{domain: string, display_host: string, available: bool, checkout_url: string, price_usd?: ?float, price_label?: ?string, is_premium?: bool}
      */
     protected function formatRow(array $row): array
     {
         $domain = $this->normalizeDomain((string) ($row['domain'] ?? ''));
         $available = (bool) ($row['available'] ?? false);
+        $priceUsd = null;
+
+        if (isset($row['price']) && is_numeric($row['price'])) {
+            $priceUsd = round(((float) $row['price']) / 1_000_000, 2);
+        }
+
+        $isPremium = $priceUsd !== null && $priceUsd > 50.0;
+        $registerable = $this->isRegisterableAvailability($row);
 
         return [
             'domain' => $domain,
             'display_host' => $this->displayHost($domain),
             'available' => $available,
+            'registerable' => $registerable,
             'checkout_url' => $this->checkoutUrl($domain),
+            'price_usd' => $priceUsd,
+            'is_premium' => $isPremium,
         ];
     }
 
