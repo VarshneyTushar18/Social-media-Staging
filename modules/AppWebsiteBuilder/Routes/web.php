@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\AppWebsiteBuilder\Http\Controllers\WebsiteAuditReportDownloadController;
 use Modules\AppWebsiteBuilder\Http\Controllers\WebsiteTemplateCardEmbedController;
 use Modules\AppWebsiteBuilder\Livewire\CreateWebsiteWizard;
 use Modules\AppWebsiteBuilder\Livewire\WebsiteAgentDashboard;
@@ -33,4 +34,6 @@ Route::middleware(['web', 'auth'])->group(function (): void {
         ->name('portal.agents.website.domains');
     Route::livewire('portal/agents/website/audit', WebsiteAudit::class)
         ->name('portal.agents.website.audit');
+    Route::get('portal/agents/website/audit/runs/{websiteAuditRun}/report.pdf', WebsiteAuditReportDownloadController::class)
+        ->name('portal.agents.website.audit.download');
 });

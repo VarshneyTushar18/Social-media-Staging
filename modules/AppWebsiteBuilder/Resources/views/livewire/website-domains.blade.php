@@ -325,7 +325,7 @@
                     {{ __('Live custom domains') }}
                 </h2>
                 <p class="mt-2 max-w-2xl text-sm leading-relaxed" style="color: var(--theme-muted-text-color);">
-                    {{ __('Sites published on your own domain. Map DNS at your registrar; they are not served from a platform /sites/ URL.') }}
+                    {{ __('Sites published on your own domain.') }}
                 </p>
             </div>
 

@@ -216,6 +216,10 @@ class AgencyOnboarding
         return [
             'portal.dashboard',
             'portal.dashboard.*',
+            'portal.support',
+            'portal.support.*',
+            'portal.affiliate',
+            'portal.affiliate.*',
             'portal.credits',
             'portal.billing',
             'portal.billing.*',

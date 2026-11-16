@@ -34,12 +34,12 @@ class AppAffiliateServiceProvider extends ServiceProvider
             'order' => 180,
         ]);
 
-        register_user_sidebar_item('portal', [
+        register_user_sidebar_item('help-desk', [
             'label' => 'Affiliate',
             'route_name' => 'portal.affiliate.index',
             'active_when' => ['portal.affiliate.*'],
-            'icon' => 'fa-solid fa-coins',
-            'order' => 40,
+            'icon' => 'affiliate',
+            'order' => 20,
             'visible' => fn () => app(AffiliateService::class)->userCanAccess(auth()->user()),
         ]);
     }

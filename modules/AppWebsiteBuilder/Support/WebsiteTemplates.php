@@ -184,7 +184,7 @@ class WebsiteTemplates
         }
 
         foreach (self::galleryExampleSlugLabels() as $slug => $label) {
-            if ($siteType === $label) {
+            if (strcasecmp($siteType, $label) === 0) {
                 return $slug;
             }
         }
@@ -386,23 +386,16 @@ class WebsiteTemplates
                 continue;
             }
 
-            $recommended = self::isRecommended($definition, $category, $niche);
-            $isFirstInSlug = ($ids[0] ?? '') === $id;
-
             $result[] = [
                 'id' => $id,
                 'name' => (string) $definition['name'],
                 'description' => self::descriptionForType($definition, $category, $typeLabel, $niche),
                 'preview_url' => self::previewForDefinition($definition, $category, $niche),
                 'accent' => (string) ($definition['accent'] ?? '#5b4dff'),
-                'recommended' => $recommended || $isFirstInSlug,
-                'sort' => ($recommended || $isFirstInSlug) ? 0 : 1,
             ];
         }
 
-        usort($result, fn (array $a, array $b): int => ($a['sort'] ?? 1) <=> ($b['sort'] ?? 1) ?: strcmp((string) $a['name'], (string) $b['name']));
-
-        return $result;
+        return self::stripTemplateSortKeys($result);
     }
 
     /**
@@ -437,8 +430,6 @@ class WebsiteTemplates
                 'description' => (string) ($definition['description'] ?? ''),
                 'preview_url' => $preview,
                 'accent' => (string) ($definition['accent']),
-                'recommended' => false,
-                'sort' => 0,
             ];
         }
 
@@ -494,8 +485,6 @@ class WebsiteTemplates
                 continue;
             }
 
-            $recommended = self::isRecommended($definition, $category, $niche);
-
             $preview = self::previewForDefinition($definition, $category, $niche);
             $description = self::descriptionForType($definition, $category, $typeLabel, $niche);
 
@@ -505,12 +494,10 @@ class WebsiteTemplates
                 'description' => $description,
                 'preview_url' => $preview,
                 'accent' => (string) $definition['accent'],
-                'recommended' => $recommended,
-                'sort' => $recommended ? 0 : 1,
             ];
         }
 
-        usort($result, fn (array $a, array $b): int => $a['sort'] <=> $b['sort'] ?: strcmp($a['name'], $b['name']));
+        usort($result, fn (array $a, array $b): int => strcmp((string) $a['name'], (string) $b['name']));
 
         return ['items' => $result, 'niche' => $niche];
     }
@@ -522,7 +509,7 @@ class WebsiteTemplates
     protected static function stripTemplateSortKeys(array $rows): array
     {
         return array_map(function (array $row): array {
-            unset($row['sort']);
+            unset($row['sort'], $row['recommended']);
 
             return $row;
         }, $rows);
@@ -536,18 +523,6 @@ class WebsiteTemplates
         $allowed = (array) ($definition['for_niches'] ?? ['general', 'cleaning', 'beauty', 'trades']);
 
         return in_array($niche, $allowed, true);
-    }
-
-    /**
-     * @param  array<string, mixed>  $definition
-     */
-    protected static function isRecommended(array $definition, string $category, string $niche): bool
-    {
-        if ($category === 'local' && $niche === 'pet') {
-            return ($definition['id'] ?? '') === 'pet-grooming-salon';
-        }
-
-        return in_array($category, (array) ($definition['recommended_for'] ?? []), true);
     }
 
     /**
@@ -604,7 +579,7 @@ class WebsiteTemplates
         return $templates;
     }
 
-  protected static function previewPhotoKey(string $url): string
+    protected static function previewPhotoKey(string $url): string
     {
         if (preg_match('/photo-([a-zA-Z0-9_-]+)/', $url, $matches) === 1) {
             return (string) $matches[1];
@@ -771,7 +746,6 @@ class WebsiteTemplates
                 'preview_url' => $previewUrl,
                 'preview_fallback' => $previewUrl,
                 'accent' => (string) ($definition['accent'] ?? '#5b4dff'),
-                'recommended' => false,
                 'categories' => $categories,
             ];
         }

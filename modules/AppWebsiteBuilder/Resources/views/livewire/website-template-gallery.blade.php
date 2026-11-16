@@ -132,17 +132,9 @@
                     </div>
 
                     <div class="flex flex-1 flex-col gap-3 p-4 sm:p-5">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <h3 class="text-base font-bold leading-snug" style="color: var(--theme-header-text-color);">
-                                {{ $template['name'] }}
-                            </h3>
-                            @if (! empty($template['recommended']))
-                                <span
-                                    class="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                                    style="background: rgba(var(--theme-accent-rgb), 0.14); color: var(--theme-accent);"
-                                >{{ __('Best match') }}</span>
-                            @endif
-                        </div>
+                        <h3 class="text-base font-bold leading-snug" style="color: var(--theme-header-text-color);">
+                            {{ $template['name'] }}
+                        </h3>
                         @if (! empty($template['description']))
                             <p class="text-sm leading-relaxed" style="color: var(--theme-muted-text-color);">
                                 {{ $template['description'] }}

@@ -168,7 +168,7 @@ class WebsiteTemplateGallery extends Component
         $search = trim($this->searchQuery);
 
         if ($search !== '') {
-            return WebsiteTemplates::galleryTextSearch($search);
+            return WebsiteTemplates::galleryForSiteType($search);
         }
 
         return [];
