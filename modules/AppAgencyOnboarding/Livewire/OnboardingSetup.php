@@ -31,9 +31,9 @@ class OnboardingSetup extends Component
     {
         $onboarding = app(AgencyOnboarding::class);
         $user = auth()->user();
-        abort_unless($user?->hasActivePlan(), 403);
+        abort_unless($user !== null && $onboarding->hasPortalProjectOnboardingAccess($user), 403);
 
-        if (! $onboarding->hasChosenOnboardingPlan($user)) {
+        if ($user && ! $user->isSuperAdmin() && ! $onboarding->hasChosenOnboardingPlan($user)) {
             $this->redirectRoute('portal.onboarding.plan', navigate: false);
 
             return;

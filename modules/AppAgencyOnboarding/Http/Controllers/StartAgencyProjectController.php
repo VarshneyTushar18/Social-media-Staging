@@ -12,7 +12,7 @@ class StartAgencyProjectController
     {
         $user = $request->user();
 
-        abort_unless($user !== null && $onboarding->hasChosenOnboardingPlan($user) && $user->hasActivePlan(), 403);
+        abort_unless($user !== null && $onboarding->hasPortalProjectOnboardingAccess($user), 403);
 
         $onboarding->beginAdditionalProject($user);
 

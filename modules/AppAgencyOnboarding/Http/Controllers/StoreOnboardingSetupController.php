@@ -13,8 +13,7 @@ class StoreOnboardingSetupController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user?->hasActivePlan(), 403);
-        abort_unless($onboarding->hasChosenOnboardingPlan($user), 403);
+        abort_unless($user !== null && $onboarding->hasPortalProjectOnboardingAccess($user), 403);
 
         $validated = $request->validate(
             [

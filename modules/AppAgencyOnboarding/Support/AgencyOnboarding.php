@@ -119,6 +119,15 @@ class AgencyOnboarding
         return route('portal.onboarding');
     }
 
+    public function hasPortalProjectOnboardingAccess(User $user): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->hasChosenOnboardingPlan($user) && $user->hasActivePlan();
+    }
+
     public function isComplete(User $user): bool
     {
         if ($user->isSuperAdmin()) {
@@ -144,8 +153,16 @@ class AgencyOnboarding
 
         $this->markOnboardingPlanChosen($user);
 
+        if ($this->isAddingAdditionalProject()) {
+            return;
+        }
+
         $allAgents = array_keys(AgentCatalog::all());
         $project = $this->activeProject($user);
+
+        if ($project !== null && ! $project->isSetupComplete()) {
+            return;
+        }
 
         if ($project?->isSetupComplete()) {
             $enabled = array_values(array_filter((array) $project->enabled_agents));
@@ -158,30 +175,32 @@ class AgencyOnboarding
             return;
         }
 
-        $project = AgencyProject::query()
+        $hasCompletedProject = AgencyProject::query()
             ->where('owner_user_id', $user->id)
             ->whereNotNull('setup_completed_at')
-            ->first();
+            ->exists();
 
-        if ($project === null) {
-            $project = AgencyProject::query()->create([
-                'owner_user_id' => $user->id,
-                'name' => __('Admin workspace'),
-                'industry' => 'other',
-                'monthly_budget' => 'flexible',
-                'brand_tone' => 'professional',
-                'enabled_agents' => $allAgents,
-                'active_agent' => 'social',
-                'setup_completed_at' => now(),
-            ]);
+        if ($hasCompletedProject) {
+            return;
         }
+
+        $project = AgencyProject::query()->create([
+            'owner_user_id' => $user->id,
+            'name' => __('Admin workspace'),
+            'industry' => 'other',
+            'monthly_budget' => 'flexible',
+            'brand_tone' => 'professional',
+            'enabled_agents' => $allAgents,
+            'active_agent' => 'social',
+            'setup_completed_at' => now(),
+        ]);
 
         $this->setActiveProject($user, $project);
     }
 
     public function currentStep(User $user): string
     {
-        if (! $this->hasChosenOnboardingPlan($user) || ! $user->hasActivePlan()) {
+        if (! $user->isSuperAdmin() && (! $this->hasChosenOnboardingPlan($user) || ! $user->hasActivePlan())) {
             return 'plan';
         }
 
@@ -345,17 +364,24 @@ class AgencyOnboarding
         }
 
         try {
-            $project = $this->draftProject($user);
-
-            if ($project?->isSetupComplete()) {
-                $project = null;
-            }
-
-            if (! $project) {
+            if ($this->isAddingAdditionalProject()) {
                 $project = new AgencyProject([
                     'owner_user_id' => $user->id,
                     'active_agent' => 'social',
                 ]);
+            } else {
+                $project = $this->draftProject($user);
+
+                if ($project?->isSetupComplete()) {
+                    $project = null;
+                }
+
+                if (! $project) {
+                    $project = new AgencyProject([
+                        'owner_user_id' => $user->id,
+                        'active_agent' => 'social',
+                    ]);
+                }
             }
 
             $project->fill([
@@ -454,6 +480,8 @@ class AgencyOnboarding
             'agency_onboarding_project_ready',
             'agency_onboarding_project_draft',
         ]);
+
+        $this->clearAddingAdditionalProject();
 
         return $project->fresh() ?? $project;
     }
@@ -577,6 +605,11 @@ class AgencyOnboarding
     public function maxSelectableAgents(User $user): int
     {
         $catalogCount = count(AgentCatalog::all());
+
+        if ($user->isSuperAdmin()) {
+            return max(1, $catalogCount);
+        }
+
         $limit = (int) $user->planLimit('max_agents_per_project', $catalogCount);
 
         if ($limit < 1) {
