@@ -2,11 +2,14 @@
 
 namespace Modules\AppWebsiteBuilder\Providers;
 
+use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
+use Modules\AppWebsiteBuilder\Http\Middleware\ServePublishedWebsiteByCustomDomain;
 use Modules\AppWebsiteBuilder\Support\WebsiteAiGenerator;
 use Modules\AppWebsiteBuilder\Support\WebsiteAuditService;
 use Modules\AppWebsiteBuilder\Support\WebsiteExternalPageSnapshot;
+use Modules\AppWebsiteBuilder\Support\WebsiteOverviewMetrics;
 use Modules\AppWebsiteBuilder\Support\WebsiteSiteCreator;
 
 class AppWebsiteBuilderServiceProvider extends ServiceProvider
@@ -22,6 +25,10 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        /** @var Router $router */
+        $router = $this->app->make(Router::class);
+        $router->pushMiddlewareToGroup('web', ServePublishedWebsiteByCustomDomain::class);
+
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../Routes/publish.php');
         $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
@@ -42,6 +49,8 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
             'order' => 23,
             'description' => __('Credits deducted each time AI audits a website.'),
         ]);
+
+        $this->registerWebsiteOverviewDashboardItems();
 
         if (! class_exists(AgencyOnboarding::class)) {
             return;
@@ -103,6 +112,55 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
             'visible' => fn (): bool => $this->projectHasWebsiteAgent(),
         ]);
 
+    }
+
+    protected function registerWebsiteOverviewDashboardItems(): void
+    {
+        $visible = fn ($user): bool => WebsiteOverviewMetrics::userHasWebsiteAgent($user);
+
+        register_user_dashboard_item('app-website-builder.sites-summary', [
+            'title' => __('Sites'),
+            'view' => 'appwebsitebuilder::dashboard.sites-summary',
+            'width' => 'full',
+            'order' => 10,
+            'surfaces' => ['website-overview'],
+            'route_name' => 'portal.agents.website.dashboard',
+            'data' => fn ($user): array => WebsiteOverviewMetrics::sitesSummary($user),
+            'visible' => $visible,
+        ]);
+
+        register_user_dashboard_item('app-website-builder.templates-summary', [
+            'title' => __('Templates'),
+            'view' => 'appwebsitebuilder::dashboard.templates-summary',
+            'width' => 'full',
+            'order' => 20,
+            'surfaces' => ['website-overview'],
+            'route_name' => 'portal.agents.website.templates',
+            'data' => fn ($user): array => WebsiteOverviewMetrics::templatesSummary(),
+            'visible' => $visible,
+        ]);
+
+        register_user_dashboard_item('app-website-builder.domains-summary', [
+            'title' => __('Domains'),
+            'view' => 'appwebsitebuilder::dashboard.domains-summary',
+            'width' => 'full',
+            'order' => 30,
+            'surfaces' => ['website-overview'],
+            'route_name' => 'portal.agents.website.domains',
+            'data' => fn ($user): array => WebsiteOverviewMetrics::domainsSummary($user),
+            'visible' => $visible,
+        ]);
+
+        register_user_dashboard_item('app-website-builder.audit-summary', [
+            'title' => __('Website audit'),
+            'view' => 'appwebsitebuilder::dashboard.audit-summary',
+            'width' => 'full',
+            'order' => 40,
+            'surfaces' => ['website-overview'],
+            'route_name' => 'portal.agents.website.audit',
+            'data' => fn ($user): array => WebsiteOverviewMetrics::auditSummary($user),
+            'visible' => $visible,
+        ]);
     }
 
     protected function projectHasWebsiteAgent(): bool

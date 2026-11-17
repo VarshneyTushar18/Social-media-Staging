@@ -15,6 +15,16 @@ class AgentCatalog
     }
 
     /**
+     * Premium support tickets — Workspace dashboard (HQ) only, not inside agent shells.
+     *
+     * @return list<string>
+     */
+    public static function sharedHelpDeskSidebarSections(): array
+    {
+        return ['help-desk'];
+    }
+
+    /**
      * Full portal sidebar for the Social agent (workspace, publishing, etc.).
      *
      * @return list<string>
@@ -24,7 +34,7 @@ class AgentCatalog
         return array_merge(
             ['overview', 'agents', 'workspace', 'content-tools'],
             self::sharedLibrarySidebarSections(),
-            ['help-desk', 'portal'],
+            ['portal'],
         );
     }
 
@@ -35,7 +45,7 @@ class AgentCatalog
      */
     public static function mainHubSidebarSections(): array
     {
-        return ['agents'];
+        return array_merge(['agents'], self::sharedHelpDeskSidebarSections());
     }
 
     /**

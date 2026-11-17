@@ -22,6 +22,11 @@ class WebsiteSite extends Model
         'build_method',
         'status',
         'subdomain_slug',
+        'custom_domain',
+        'custom_domain_connected_at',
+        'pending_custom_domain',
+        'publish_wizard_step',
+        'pending_domain_provider',
         'generated_content',
         'published_at',
     ];
@@ -31,6 +36,7 @@ class WebsiteSite extends Model
         return [
             'generated_content' => 'array',
             'published_at' => 'datetime',
+            'custom_domain_connected_at' => 'datetime',
         ];
     }
 

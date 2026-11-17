@@ -4,6 +4,7 @@ namespace Modules\AppWebsiteBuilder\Support;
 
 use Illuminate\Support\Collection;
 use Modules\AppWebsiteBuilder\Models\WebsiteSite;
+use Modules\AppWebsiteBuilder\Support\WebsiteCustomDomain;
 
 class WebsiteSiteCard
 {
@@ -83,9 +84,12 @@ class WebsiteSiteCard
             'status' => $site->status,
             'is_published' => $site->status === WebsiteSite::STATUS_PUBLISHED,
             'subdomain_slug' => $site->subdomain_slug,
-            'public_url' => $site->subdomain_slug
-                ? WebsitePublishConfig::publicUrl((string) $site->subdomain_slug)
-                : null,
+            'public_url' => $site->custom_domain
+                ? WebsiteCustomDomain::publicUrl((string) $site->custom_domain)
+                : ($site->subdomain_slug
+                    ? WebsitePublishConfig::publicUrl((string) $site->subdomain_slug)
+                    : null),
+            'custom_domain' => $site->custom_domain,
             'preview_url' => $previewUrl,
             'preview_fallback' => self::PREVIEW_FALLBACK,
             'accent' => $accent,

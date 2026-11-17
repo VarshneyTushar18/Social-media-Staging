@@ -1,10 +1,12 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\AppWebsiteBuilder\Http\Controllers\WebsiteAuditReportDownloadController;
 use Modules\AppWebsiteBuilder\Http\Controllers\WebsiteTemplateCardEmbedController;
 use Modules\AppWebsiteBuilder\Livewire\CreateWebsiteWizard;
 use Modules\AppWebsiteBuilder\Livewire\WebsiteAgentDashboard;
 use Modules\AppWebsiteBuilder\Livewire\WebsiteAgentOverview;
+use Modules\AppWebsiteBuilder\Livewire\WebsitePublishWizard;
 use Modules\AppWebsiteBuilder\Livewire\WebsiteAudit;
 use Modules\AppWebsiteBuilder\Livewire\WebsiteDomains;
 use Modules\AppWebsiteBuilder\Livewire\WebsiteLandingPreview;
@@ -26,8 +28,12 @@ Route::middleware(['web', 'auth'])->group(function (): void {
         ->name('portal.agents.website.sites.preview');
     Route::livewire('portal/agents/website/sites/{websiteSite}/open', WebsiteLandingPreview::class)
         ->name('portal.agents.website.sites.open');
+    Route::livewire('portal/agents/website/sites/{websiteSite}/publish', WebsitePublishWizard::class)
+        ->name('portal.agents.website.sites.publish');
     Route::livewire('portal/agents/website/domains', WebsiteDomains::class)
         ->name('portal.agents.website.domains');
     Route::livewire('portal/agents/website/audit', WebsiteAudit::class)
         ->name('portal.agents.website.audit');
+    Route::get('portal/agents/website/audit/runs/{websiteAuditRun}/report.pdf', WebsiteAuditReportDownloadController::class)
+        ->name('portal.agents.website.audit.download');
 });

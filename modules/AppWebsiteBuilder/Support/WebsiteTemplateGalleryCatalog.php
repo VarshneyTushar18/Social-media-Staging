@@ -93,7 +93,7 @@ class WebsiteTemplateGalleryCatalog
             'preview_url' => $previewUrl,
             'for_categories' => [$category],
             'for_niches' => [$niche],
-            'recommended_for' => $recommended ? [$category] : [],
+            'recommended_for' => [],
         ];
     }
 

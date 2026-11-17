@@ -76,7 +76,10 @@
                     @endif
 
                     @if ($hasFooter)
-                        <div class="flex shrink-0 items-center justify-end gap-3 border-t bg-slate-50/70 px-5 py-4 sm:px-6 {{ $footerClass }}" style="border-color: color-mix(in srgb, var(--theme-border-color) 52%, transparent);">
+                        <div
+                            class="flex shrink-0 items-center justify-end gap-3 border-t px-5 py-4 sm:px-6 {{ $footerClass }}"
+                            style="border-color: color-mix(in srgb, var(--theme-border-color) 52%, transparent); background-color: color-mix(in srgb, var(--theme-border-color) 12%, var(--theme-surface-overlay));"
+                        >
                             {{ $footer }}
                         </div>
                     @endif

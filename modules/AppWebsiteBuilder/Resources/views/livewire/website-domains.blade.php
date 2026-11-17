@@ -14,6 +14,19 @@
             this.removeQueueSiteId = null;
             this.removeQueueSiteName = '';
         },
+        unpublishOpen: false,
+        unpublishSiteId: null,
+        unpublishSiteName: '',
+        openUnpublish(id, name) {
+            this.unpublishSiteId = id;
+            this.unpublishSiteName = name;
+            this.unpublishOpen = true;
+        },
+        closeUnpublish() {
+            this.unpublishOpen = false;
+            this.unpublishSiteId = null;
+            this.unpublishSiteName = '';
+        },
     }"
 >
     @include('appwebsitebuilder::partials.website-builder-session-toasts')
@@ -281,6 +294,115 @@
                                     {{ __('Visit') }}
                                 </x-ui.button>
                             @endif
+                            <x-ui.button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                data-site-id="{{ (int) $item['id'] }}"
+                                data-site-name="{{ e($item['name']) }}"
+                                x-on:click="openUnpublish(Number($el.dataset.siteId), $el.dataset.siteName)"
+                            >
+                                <i class="fa-solid fa-link-slash text-[11px]"></i>
+                                {{ __('Unpublish') }}
+                            </x-ui.button>
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if (count($publishedCustomDomains) > 0)
+        <section
+            class="rounded-[1.9rem] border p-5 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.28)] sm:p-6"
+            style="border-color: rgba(var(--theme-border-color-rgb), 0.68); background-color: color-mix(in srgb, var(--theme-surface-base) 96%, transparent);"
+        >
+            <div class="mb-5 min-w-0">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.24em]" style="color: var(--theme-muted-text-color);">
+                    {{ __('Website Builder') }}
+                </p>
+                <h2 class="mt-1 text-lg font-semibold tracking-tight" style="color: var(--theme-header-text-color);">
+                    {{ __('Live custom domains') }}
+                </h2>
+                <p class="mt-2 max-w-2xl text-sm leading-relaxed" style="color: var(--theme-muted-text-color);">
+                    {{ __('Sites published on your own domain.') }}
+                </p>
+            </div>
+
+            <div class="space-y-3">
+                @foreach ($publishedCustomDomains as $item)
+                    <article
+                        wire:key="live-custom-{{ $item['id'] }}"
+                        class="flex flex-col gap-4 rounded-[1.35rem] border p-4 sm:flex-row sm:items-center sm:p-5"
+                        style="border-color: rgba(59, 130, 246, 0.35); background-color: color-mix(in srgb, var(--theme-surface-base) 98%, transparent);"
+                    >
+                        <div class="flex min-w-0 flex-1 items-center gap-4">
+                            <div
+                                class="relative h-[4.75rem] w-[4.75rem] shrink-0 overflow-hidden rounded-[0.95rem] border"
+                                style="border-color: rgba(var(--theme-border-color-rgb), 0.58);"
+                            >
+                                <img
+                                    src="{{ $item['preview_url'] }}"
+                                    alt=""
+                                    class="h-full w-full object-cover"
+                                    loading="lazy"
+                                    onerror="this.onerror=null;this.src=@js($item['preview_fallback']);"
+                                />
+                                <span
+                                    class="absolute bottom-1 right-1 h-2 w-2 rounded-full ring-2 ring-white/80"
+                                    style="background: {{ $item['accent'] }};"
+                                    aria-hidden="true"
+                                ></span>
+                            </div>
+                            <div class="min-w-0 flex-1 space-y-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <p class="text-base font-semibold leading-snug" style="color: var(--theme-header-text-color);">
+                                        {{ $item['name'] }}
+                                    </p>
+                                    <span
+                                        class="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                                        style="background: rgba(59, 130, 246, 0.12); color: #2563eb;"
+                                    >
+                                        {{ __('Custom domain') }}
+                                    </span>
+                                    <span
+                                        class="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                                        style="background: rgba(16, 185, 129, 0.15); color: #059669;"
+                                    >
+                                        {{ $item['status_label'] }}
+                                    </span>
+                                </div>
+                                @if (filled($item['public_url']))
+                                    <a
+                                        href="{{ $item['public_url'] }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="inline-flex items-center gap-2 break-all text-sm font-semibold transition hover:opacity-90"
+                                        style="color: #2563eb;"
+                                    >
+                                        {{ $item['public_url'] }}
+                                    </a>
+                                @endif
+                                @if (filled($item['published_label']))
+                                    <p class="text-xs" style="color: var(--theme-muted-text-color);">
+                                        {{ __('Published :time', ['time' => $item['published_label']]) }}
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-end gap-2 sm:shrink-0">
+                            @if (filled($item['public_url']))
+                                <x-ui.button
+                                    :href="$item['public_url']"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    size="sm"
+                                >
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[11px]"></i>
+                                    {{ __('Visit') }}
+                                </x-ui.button>
+                            @endif
                         </div>
                     </article>
                 @endforeach
@@ -340,6 +462,68 @@
                             >
                                 <i class="fa-solid fa-trash-can"></i>
                                 {{ __('Remove') }}
+                            </x-ui.button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template x-teleport="body">
+        <div
+            x-cloak
+            x-show="unpublishOpen"
+            class="fixed inset-0 z-[120] flex items-end justify-center overflow-y-auto p-4 sm:items-center sm:p-6"
+            x-on:keydown.escape.window="closeUnpublish()"
+        >
+            <div class="absolute inset-0 bg-white/55 backdrop-blur-[6px] dark:bg-slate-950/55" x-on:click="closeUnpublish()"></div>
+
+            <div x-show="unpublishOpen" x-transition.opacity.scale.90 class="relative w-full max-w-[26rem]">
+                <div
+                    class="overflow-hidden rounded-[1.15rem] border shadow-[0_32px_80px_-34px_rgba(15,23,42,0.32)]"
+                    style="border-color: color-mix(in srgb, var(--theme-border-color) 58%, transparent); background-color: var(--theme-surface-overlay);"
+                >
+                    <div
+                        class="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-6 sm:py-5"
+                        style="border-color: color-mix(in srgb, var(--theme-border-color) 52%, transparent);"
+                    >
+                        <div class="min-w-0">
+                            <h3 class="text-[1.05rem] font-semibold tracking-[-0.02em]" style="color: var(--theme-header-text-color);">
+                                {{ __('Remove this subdomain?') }}
+                            </h3>
+                            <p class="mt-2 text-[15px] leading-7" style="color: var(--theme-muted-text-color);">
+                                <span class="font-semibold" style="color: var(--theme-header-text-color);" x-text="unpublishSiteName"></span>
+                                {{ __('will stay as a draft on your dashboard. The public URL will stop working.') }}
+                            </p>
+                        </div>
+
+                        <button type="button" style="color: var(--theme-muted-text-color);" x-on:click="closeUnpublish()">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+
+                    <div
+                        class="border-t px-5 py-4 sm:px-6"
+                        style="border-color: color-mix(in srgb, var(--theme-border-color) 52%, transparent); background-color: color-mix(in srgb, var(--theme-surface-base) 72%, transparent);"
+                    >
+                        <div class="flex items-center justify-end gap-3">
+                            <x-ui.button type="button" variant="outline" x-on:click="closeUnpublish()">
+                                <i class="fa-solid fa-xmark"></i>
+                                {{ __('Cancel') }}
+                            </x-ui.button>
+                            <x-ui.button
+                                type="button"
+                                variant="danger"
+                                wire:loading.attr="disabled"
+                                wire:target="unpublishSubdomain"
+                                x-on:click="$wire.unpublishSubdomain(unpublishSiteId); closeUnpublish()"
+                            >
+                                <span wire:loading.remove wire:target="unpublishSubdomain">
+                                    <i class="fa-solid fa-link-slash"></i>
+                                    {{ __('Unpublish') }}
+                                </span>
+                                <span wire:loading wire:target="unpublishSubdomain">{{ __('Unpublishing…') }}</span>
                             </x-ui.button>
                         </div>
                     </div>
