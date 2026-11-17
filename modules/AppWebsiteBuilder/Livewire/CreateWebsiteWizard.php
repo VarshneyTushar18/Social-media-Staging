@@ -29,6 +29,8 @@ class CreateWebsiteWizard extends Component
 
     public bool $isCreatingFromTemplate = false;
 
+    public ?string $creatingTemplateId = null;
+
     public string $userPrompt = '';
 
     /**
@@ -149,6 +151,7 @@ class CreateWebsiteWizard extends Component
 
         $this->resetErrorBag('generate');
         $this->isCreatingFromTemplate = true;
+        $this->creatingTemplateId = $templateId;
 
         try {
             $onboarding = app(AgencyOnboarding::class);
@@ -162,6 +165,7 @@ class CreateWebsiteWizard extends Component
             $this->addError('generate', $exception->getMessage());
         } finally {
             $this->isCreatingFromTemplate = false;
+            $this->creatingTemplateId = null;
         }
     }
 

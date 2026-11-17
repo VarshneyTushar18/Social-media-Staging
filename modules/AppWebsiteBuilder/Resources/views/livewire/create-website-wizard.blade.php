@@ -74,13 +74,8 @@
                     />
                 @else
                 <div
-                    @class([
-                        'mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3',
-                        'pointer-events-none opacity-60' => $isCreatingFromTemplate,
-                    ])
+                    class="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
                     wire:key="wizard-template-grid-{{ md5($siteType) }}"
-                    wire:loading.class="pointer-events-none opacity-60"
-                    wire:target="selectTemplate"
                     x-data
                     x-init="$nextTick(() => requestAnimationFrame(() => window.TemplateCardPreview?.scheduleBoot?.(true)))"
                 >
@@ -111,16 +106,19 @@
                             <div class="flex flex-1 flex-col gap-3 p-4 sm:p-5">
                                 <p class="font-semibold" style="color: var(--theme-header-text-color);">{{ $template['name'] }}</p>
                                 <p class="text-sm leading-relaxed" style="color: var(--theme-muted-text-color);">{{ $template['description'] }}</p>
+                                @php
+                                    $selectTemplateTarget = 'selectTemplate('.json_encode($template['id']).')';
+                                @endphp
                                 <x-ui.button
                                     type="button"
                                     class="mt-auto w-full justify-center sm:w-fit"
                                     wire:click="selectTemplate({{ json_encode($template['id']) }})"
                                     wire:loading.attr="disabled"
-                                    wire:target="selectTemplate"
-                                    :disabled="$isCreatingFromTemplate"
+                                    wire:target="{{ $selectTemplateTarget }}"
+                                    :disabled="$isCreatingFromTemplate && $creatingTemplateId !== $template['id']"
                                 >
-                                    <span wire:loading.remove wire:target="selectTemplate">{{ __('Use this template') }}</span>
-                                    <span wire:loading wire:target="selectTemplate">{{ __('Creating…') }}</span>
+                                    <span wire:loading.remove wire:target="{{ $selectTemplateTarget }}">{{ __('Use this template') }}</span>
+                                    <span wire:loading wire:target="{{ $selectTemplateTarget }}">{{ __('Creating…') }}</span>
                                 </x-ui.button>
                             </div>
                         </article>
