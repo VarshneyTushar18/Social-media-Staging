@@ -6,6 +6,7 @@
         publishSiteName: '',
         publishStep: 'choice',
         domainProviders: @js($domainProviders),
+        domainProviderKeys: @js($domainProviderKeys),
         publishUrlPattern: @js($publishUrlPattern),
         selectedProviderKey: null,
         subdomainSlug: '',
@@ -67,7 +68,7 @@
                 return;
             }
 
-            if (! ['godaddy', 'namecheap'].includes(this.selectedProviderKey)) {
+            if (! this.domainProviderKeys.includes(this.selectedProviderKey)) {
                 return;
             }
 
@@ -399,8 +400,9 @@
                                 </x-ui.button>
                                 <x-ui.button
                                     type="button"
-                                    x-show="publishStep === 'providers' && selectedProviderKey"
+                                    x-show="publishStep === 'providers'"
                                     x-cloak
+                                    x-bind:disabled="! selectedProviderKey"
                                     x-on:click="confirmCustomDomain()"
                                 >
                                     {{ __('Continue') }}

@@ -10,11 +10,7 @@
 @php
     $hostFormatter = is_callable($displayHost)
         ? $displayHost
-        : fn (string $domain): string => app(
-            $domainProvider === 'namecheap'
-                ? \Modules\AppWebsiteBuilder\Support\NamecheapDomainClient::class
-                : \Modules\AppWebsiteBuilder\Support\GoDaddyDomainClient::class
-        )->displayHost($domain);
+        : fn (string $domain): string => \Modules\AppWebsiteBuilder\Support\WebsiteDomainRegistrarResolver::resolve($domainProvider)->displayHost($domain);
 
     $bareHostFormatter = is_callable($bareDomain)
         ? $bareDomain

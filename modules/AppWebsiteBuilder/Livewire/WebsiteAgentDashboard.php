@@ -11,6 +11,7 @@ use Livewire\Component;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 use Modules\AppWebsiteBuilder\Models\WebsiteSite;
 use Modules\AppWebsiteBuilder\Support\WebsiteDomainProviders;
+use Modules\AppWebsiteBuilder\Support\WebsiteDomainRegistrarResolver;
 use Modules\AppWebsiteBuilder\Support\WebsitePublishConfig;
 use Modules\AppWebsiteBuilder\Support\WebsiteSiteCard;
 use Modules\AppWebsiteBuilder\Support\WebsiteSubdomain;
@@ -46,8 +47,7 @@ class WebsiteAgentDashboard extends Component
         $providerKey = strtolower(trim((string) $providerKey));
 
         if ($mode === 'custom') {
-            abort_unless(WebsiteDomainProviders::find($providerKey) !== null, 422);
-            abort_unless(in_array($providerKey, ['godaddy', 'namecheap'], true), 422);
+            abort_unless(WebsiteDomainRegistrarResolver::supports($providerKey), 422);
         } else {
             $providerKey = '';
         }
@@ -131,8 +131,7 @@ class WebsiteAgentDashboard extends Component
         abort_unless($user, 403);
 
         $provider = strtolower(trim($provider));
-        abort_unless(WebsiteDomainProviders::find($provider) !== null, 422);
-        abort_unless(in_array($provider, ['godaddy', 'namecheap'], true), 422);
+        abort_unless(WebsiteDomainRegistrarResolver::supports($provider), 422);
 
         $site = WebsiteSite::query()
             ->where('owner_user_id', $user->id)
@@ -237,6 +236,7 @@ class WebsiteAgentDashboard extends Component
             'sites' => $sites,
             'siteCards' => WebsiteSiteCard::fromCollection($sites),
             'domainProviders' => WebsiteDomainProviders::all(),
+            'domainProviderKeys' => WebsiteDomainRegistrarResolver::keys(),
             'publishUrlPattern' => WebsitePublishConfig::urlPattern(),
             'publishDomain' => WebsitePublishConfig::publishDomain(),
         ])->layout(theme_view('layouts.app', 'app'), [

@@ -12,15 +12,12 @@ class NamecheapDomainClient
 
     public function isConfigured(): bool
     {
-        return $this->apiUser() !== ''
-            && $this->apiKey() !== ''
-            && $this->username() !== ''
-            && $this->clientIp() !== '';
+        return WebsiteDomainRegistrarConfig::namecheapConfigured();
     }
 
     public function isSandbox(): bool
     {
-        return filter_var(config('modules.appwebsitebuilder.namecheap.sandbox', true), FILTER_VALIDATE_BOOLEAN);
+        return (bool) ($this->namecheapConfig()['sandbox'] ?? true);
     }
 
     /**
@@ -29,7 +26,7 @@ class NamecheapDomainClient
     public function searchWithAvailability(string $query, int $limit = 24): array
     {
         if (! $this->isConfigured()) {
-            throw new \RuntimeException(__('Namecheap API is not configured. Add NAMECHEAP_API_* and NAMECHEAP_CLIENT_IP to .env.'));
+            throw new \RuntimeException(__('Namecheap API is not configured. Add credentials under Settings → Domain registrars.'));
         }
 
         $seed = $this->normalizeSearchQuery($query);
@@ -274,6 +271,14 @@ class NamecheapDomainClient
         return $errors !== [] ? implode(' ', $errors) : __('Namecheap API error.');
     }
 
+    /**
+     * @return array{sandbox: bool, api_user: string, api_key: string, username: string, client_ip: string}
+     */
+    protected function namecheapConfig(): array
+    {
+        return WebsiteDomainRegistrarConfig::namecheap();
+    }
+
     protected function baseUrl(): string
     {
         return $this->isSandbox()
@@ -283,21 +288,21 @@ class NamecheapDomainClient
 
     protected function apiUser(): string
     {
-        return trim((string) config('modules.appwebsitebuilder.namecheap.api_user', ''));
+        return (string) ($this->namecheapConfig()['api_user'] ?? '');
     }
 
     protected function apiKey(): string
     {
-        return trim((string) config('modules.appwebsitebuilder.namecheap.api_key', ''));
+        return (string) ($this->namecheapConfig()['api_key'] ?? '');
     }
 
     protected function username(): string
     {
-        return trim((string) config('modules.appwebsitebuilder.namecheap.username', ''));
+        return (string) ($this->namecheapConfig()['username'] ?? '');
     }
 
     protected function clientIp(): string
     {
-        return trim((string) config('modules.appwebsitebuilder.namecheap.client_ip', ''));
+        return (string) ($this->namecheapConfig()['client_ip'] ?? '');
     }
 }

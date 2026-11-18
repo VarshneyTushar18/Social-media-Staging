@@ -12,6 +12,8 @@ class WebsiteDomainProviders
         return [
             ['key' => 'godaddy', 'name' => 'GoDaddy', 'url' => 'https://www.godaddy.com/domains'],
             ['key' => 'namecheap', 'name' => 'Namecheap', 'url' => 'https://www.namecheap.com/domains/'],
+            ['key' => 'hostinger', 'name' => 'Hostinger', 'url' => 'https://www.hostinger.com/domain-name-search'],
+            ['key' => 'namesilo', 'name' => 'NameSilo', 'url' => 'https://www.namesilo.com/domain/search-domains'],
         ];
     }
 

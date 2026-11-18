@@ -11,7 +11,9 @@ use Livewire\Component;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 use Modules\AppWebsiteBuilder\Models\WebsiteSite;
 use Modules\AppWebsiteBuilder\Support\GoDaddyDomainClient;
+use Modules\AppWebsiteBuilder\Support\HostingerDomainClient;
 use Modules\AppWebsiteBuilder\Support\NamecheapDomainClient;
+use Modules\AppWebsiteBuilder\Support\NameSiloDomainClient;
 use Modules\AppWebsiteBuilder\Support\WebsiteCustomDomain;
 use Modules\AppWebsiteBuilder\Support\WebsiteCustomDomainDnsVerifier;
 use Modules\AppWebsiteBuilder\Support\WebsiteDomainInputValidator;
@@ -581,7 +583,7 @@ class WebsitePublishWizard extends Component
         RateLimiter::hit($key, 60);
     }
 
-    protected function registrar(): GoDaddyDomainClient|NamecheapDomainClient
+    protected function registrar(): GoDaddyDomainClient|NamecheapDomainClient|HostingerDomainClient|NameSiloDomainClient
     {
         return WebsiteDomainRegistrarResolver::resolve($this->domainProvider);
     }
@@ -589,8 +591,10 @@ class WebsitePublishWizard extends Component
     protected function configurationHelpMessage(): string
     {
         return match ($this->domainProvider) {
-            'namecheap' => __('Namecheap API is not configured. Add NAMECHEAP_API_USER, NAMECHEAP_API_KEY, NAMECHEAP_USERNAME, and NAMECHEAP_CLIENT_IP to .env.'),
-            default => __('GoDaddy API is not configured. Add GODADDY_API_KEY and GODADDY_API_SECRET to .env.'),
+            'namecheap' => __('Namecheap API is not configured. Add credentials under Settings → Domain registrars.'),
+            'hostinger' => __('Hostinger API is not configured. Add credentials under Settings → Domain registrars.'),
+            'namesilo' => __('NameSilo API is not configured. Add credentials under Settings → Domain registrars.'),
+            default => __('GoDaddy API is not configured. Add credentials under Settings → Domain registrars.'),
         };
     }
 

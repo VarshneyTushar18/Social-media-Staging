@@ -10,16 +10,12 @@ class GoDaddyDomainClient
 {
     public function isConfigured(): bool
     {
-        if ($this->apiKey() !== '' && $this->apiSecret() !== '') {
-            return true;
-        }
-
-        return $this->apiToken() !== '';
+        return WebsiteDomainRegistrarConfig::godaddyConfigured();
     }
 
     public function isOte(): bool
     {
-        return strtolower((string) config('modules.appwebsitebuilder.godaddy.env', 'ote')) !== 'production';
+        return strtolower((string) ($this->godaddyConfig()['env'] ?? 'ote')) !== 'production';
     }
 
     /**
@@ -28,7 +24,7 @@ class GoDaddyDomainClient
     public function searchWithAvailability(string $query, int $limit = 24): array
     {
         if (! $this->isConfigured()) {
-            throw new \RuntimeException(__('GoDaddy API credentials are not configured.'));
+            throw new \RuntimeException(__('GoDaddy API credentials are not configured. Add them under Settings → Domain registrars.'));
         }
 
         $seed = $this->normalizeSearchQuery($query);
@@ -273,26 +269,25 @@ class GoDaddyDomainClient
      */
     protected function authHeaders(): array
     {
-        if ($this->apiKey() !== '' && $this->apiSecret() !== '') {
-            return ['Authorization' => 'sso-key '.$this->apiKey().':'.$this->apiSecret()];
-        }
-
-        return ['Authorization' => 'Bearer '.$this->apiToken()];
+        return ['Authorization' => 'sso-key '.$this->apiKey().':'.$this->apiSecret()];
     }
 
-    protected function apiToken(): string
+    /**
+     * @return array{env: string, api_key: string, api_secret: string}
+     */
+    protected function godaddyConfig(): array
     {
-        return trim((string) config('modules.appwebsitebuilder.godaddy.api_token', ''));
+        return WebsiteDomainRegistrarConfig::godaddy();
     }
 
     protected function apiKey(): string
     {
-        return trim((string) config('modules.appwebsitebuilder.godaddy.api_key', ''));
+        return (string) ($this->godaddyConfig()['api_key'] ?? '');
     }
 
     protected function apiSecret(): string
     {
-        return trim((string) config('modules.appwebsitebuilder.godaddy.api_secret', ''));
+        return (string) ($this->godaddyConfig()['api_secret'] ?? '');
     }
 
     protected function baseUrl(): string
@@ -316,15 +311,7 @@ class GoDaddyDomainClient
     protected function throwFromResponse(Response $response): void
     {
         $message = match ($response->status()) {
-            401, 403 => __('GoDaddy API rejected the credentials. Check GODADDY_API_* and GODADDY_API_ENV in .env.'),
-            429 => __('GoDaddy rate limit reached. Try again shortly.'),
-            default => __('GoDaddy domain search failed (HTTP :status).', ['status' => $response->status()]),
-        };
-
-        $body = $response->json();
-
-        if (is_array($body) && filled($body['message'] ?? null)) {
-            $message = (string) $body['message'];
+            401, 403 => __('GoDaddy API rejected the credentials. Check Settings → Domain registrars.'),
         }
 
         throw new \RuntimeException($message);

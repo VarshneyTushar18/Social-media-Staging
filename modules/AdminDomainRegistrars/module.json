@@ -1,0 +1,11 @@
+{
+    "name": "AdminDomainRegistrars",
+    "alias": "admindomainregistrars",
+    "description": "Admin settings for GoDaddy and Namecheap domain API credentials.",
+    "keywords": ["domains", "godaddy", "namecheap", "hostinger", "namesilo", "website-builder"],
+    "priority": 0,
+    "providers": [
+        "Modules\\AdminDomainRegistrars\\Providers\\AdminDomainRegistrarsServiceProvider"
+    ],
+    "files": []
+}

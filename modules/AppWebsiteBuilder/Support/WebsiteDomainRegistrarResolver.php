@@ -8,13 +8,23 @@ class WebsiteDomainRegistrarResolver
 {
     public static function supports(string $providerKey): bool
     {
-        return in_array(strtolower(trim($providerKey)), ['godaddy', 'namecheap'], true);
+        return in_array(strtolower(trim($providerKey)), self::keys(), true);
     }
 
-    public static function resolve(string $providerKey): GoDaddyDomainClient|NamecheapDomainClient
+    /**
+     * @return list<string>
+     */
+    public static function keys(): array
+    {
+        return ['godaddy', 'namecheap', 'hostinger', 'namesilo'];
+    }
+
+    public static function resolve(string $providerKey): GoDaddyDomainClient|NamecheapDomainClient|HostingerDomainClient|NameSiloDomainClient
     {
         return match (strtolower(trim($providerKey))) {
             'namecheap' => app(NamecheapDomainClient::class),
+            'hostinger' => app(HostingerDomainClient::class),
+            'namesilo' => app(NameSiloDomainClient::class),
             'godaddy' => app(GoDaddyDomainClient::class),
             default => throw new InvalidArgumentException(__('Unknown domain provider: :key', ['key' => $providerKey])),
         };
