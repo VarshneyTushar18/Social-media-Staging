@@ -246,8 +246,6 @@ class AgencyOnboarding
             'portal.packages.*',
             'portal.invoices',
             'portal.invoices.*',
-            'portal.files',
-            'portal.files.*',
         ];
     }
 
