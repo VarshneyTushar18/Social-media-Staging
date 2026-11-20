@@ -81,7 +81,7 @@
                 <p class="mt-2 text-base font-semibold" style="color: var(--theme-header-text-color);">
                     <span x-text="count()"></span> / {{ $maxAgents }} {{ __('selected') }}
                 </p>
-                <p class="mt-1 text-sm" style="color: var(--theme-muted-text-color);">{{ __('Limited by your plan') }}</p>
+                <p class="mt-1 text-sm" style="color: var(--theme-muted-text-color);">{{ __('Enable every agent your project needs') }}</p>
             </div>
         </div>
     </section>
@@ -174,7 +174,7 @@
                 <p class="mt-3 text-sm font-medium" style="color: var(--theme-danger-color);">{{ $message }}</p>
             @enderror
 
-            <p class="mt-2 text-xs" style="color: var(--theme-muted-text-color);">{{ __('Click a card to select or deselect. Social is fully live; others show your name and agent on the dashboard preview.') }}</p>
+            <p class="mt-2 text-xs" style="color: var(--theme-muted-text-color);">{{ __('Click a card to select or deselect. Every plan includes all agents.') }}</p>
 
             <template x-for="key in selected" :key="key">
                 <input type="hidden" name="selected_agents[]" :value="key">
@@ -182,18 +182,10 @@
 
             <div class="mt-5 grid gap-4 md:grid-cols-2">
                 @foreach ($agents as $key => $agent)
-                    @php
-                        $allowed = in_array($key, $allowedAgents, true);
-                    @endphp
                     <button
                         type="button"
-                        @disabled(! $allowed)
                         x-on:click="toggle(@js($key))"
-                        @class([
-                            'relative w-full rounded-[1.25rem] border p-5 text-left transition',
-                            'cursor-pointer hover:shadow-sm' => $allowed,
-                            'cursor-not-allowed opacity-60' => ! $allowed,
-                        ])
+                        class="relative w-full cursor-pointer rounded-[1.25rem] border p-5 text-left transition hover:shadow-sm"
                         x-bind:style="cardStyle(@js($key))"
                         x-bind:aria-pressed="isOn(@js($key))"
                     >

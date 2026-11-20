@@ -11,8 +11,7 @@ return [
     ),
 
     /*
-    | During setup, all agent tiles are selectable; enabled_agents on the project
-    | drives which dashboards appear in the sidebar after launch.
+    | All agents can be enabled on every plan (basic, monthly, lifetime, etc.).
     */
     'offer_all_agents_in_setup' => filter_var(
         env('AGENCY_ONBOARDING_ALL_AGENTS_SETUP', true),

@@ -218,15 +218,15 @@
         >
             <div class="space-y-3 px-6 py-6">
                 @forelse ($latestFailures as $log)
-                    <div class="rounded-[1rem] border px-4 py-4" style="border-color: rgba(var(--theme-danger-color-rgb),0.18); background-color: rgba(var(--theme-danger-color-rgb),0.05);">
+                    <div class="max-w-full overflow-hidden rounded-[1rem] border px-4 py-4" style="border-color: rgba(var(--theme-danger-color-rgb),0.18); background-color: rgba(var(--theme-danger-color-rgb),0.05);">
                         <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-sm font-semibold" style="color: var(--theme-header-text-color);">{{ strtoupper($log->provider) }} · {{ $log->model ?: __('Unknown model') }}</p>
                                 <p class="mt-1 text-xs" style="color: var(--theme-muted-text-color);">{{ $log->created_at?->format('Y-m-d H:i:s') }} · {{ $log->user?->email ?: __('No user attached') }}</p>
                             </div>
-                            <x-ui.badge variant="danger">{{ strtoupper($log->status) }}</x-ui.badge>
+                            <x-ui.badge variant="danger" class="shrink-0">{{ strtoupper($log->status) }}</x-ui.badge>
                         </div>
-                        <p class="mt-3 text-sm leading-6" style="color: var(--theme-danger-color);">{{ $log->error_message }}</p>
+                        <p class="mt-3 break-all text-sm leading-6" style="color: var(--theme-danger-color); overflow-wrap: anywhere;">{{ function_exists('ai_usage_error_message_for_display') ? ai_usage_error_message_for_display($log->error_message) : $log->error_message }}</p>
                     </div>
                 @empty
                     <x-ui.empty icon="fa-solid fa-shield-check" :title="__('No recent failures')" :description="__('Failed AI calls with captured error messages will appear here.')" />
@@ -251,7 +251,7 @@
                             <x-ui.table-cell><div class="space-y-1"><x-ui.badge variant="neutral">{{ strtoupper($log->provider) }}</x-ui.badge><p class="text-xs" style="color: var(--theme-muted-text-color);">{{ $log->model }}</p></div></x-ui.table-cell>
                             <x-ui.table-cell><div class="space-y-1"><p class="font-semibold" style="color: var(--theme-header-text-color);">{{ ucfirst($log->capability) }}</p><p class="text-xs" style="color: var(--theme-muted-text-color);">{{ collect([$log->feature, $log->route_name])->filter()->implode(' | ') ?: __('No feature metadata') }}</p></div></x-ui.table-cell>
                             <x-ui.table-cell><p class="font-medium" style="color: var(--theme-header-text-color);">{{ number_format((int) ($log->total_tokens ?? 0)) }} {{ __('tokens') }}</p><p class="text-xs" style="color: var(--theme-muted-text-color);">${{ number_format((float) ($log->estimated_cost ?? 0), 4) }} · {{ $log->latency_ms !== null ? number_format((int) $log->latency_ms).'ms' : __('No latency') }}</p></x-ui.table-cell>
-                            <x-ui.table-cell><div class="space-y-1"><x-ui.badge :variant="$log->status === 'success' ? 'success' : ($log->status === 'failed' ? 'danger' : 'neutral')">{{ strtoupper($log->status) }}</x-ui.badge><p class="text-xs" style="color: var(--theme-muted-text-color);">{{ $log->created_at?->format('Y-m-d H:i') }}</p></div></x-ui.table-cell>
+                            <x-ui.table-cell><div class="space-y-1"><x-ui.badge :variant="$log->status === 'success' ? 'success' : (in_array($log->status, ['failed', 'error'], true) ? 'danger' : 'neutral')">{{ strtoupper($log->status) }}</x-ui.badge><p class="text-xs" style="color: var(--theme-muted-text-color);">{{ $log->created_at?->format('Y-m-d H:i') }}</p></div></x-ui.table-cell>
                         </x-ui.table-row>
                     @empty
                         <x-ui.table-row>

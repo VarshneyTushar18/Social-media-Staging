@@ -11,22 +11,23 @@ class WebsitePromptStockImages
     /**
      * Resolve a stock photo URL from natural-language context (user prompt + AI image_query).
      */
-    public static function url(string $searchText, int $width = 1200, int $variant = 0): string
+    public static function url(string $searchText, int $width = 1200, int $variant = 0, ?string $imageNiche = null): string
     {
         $searchText = self::normalizeSearchText($searchText);
         if ($searchText === '') {
-            return self::fallbackUrl($width);
+            return self::fallbackUrl($width, $imageNiche);
         }
 
         $apiKey = trim((string) env('UNSPLASH_ACCESS_KEY', ''));
         if ($apiKey !== '') {
-            $apiUrl = self::urlFromUnsplashApi($searchText, $width, $variant, $apiKey);
+            $apiQuery = self::apiSearchQuery($searchText, $imageNiche);
+            $apiUrl = self::urlFromUnsplashApi($apiQuery, $width, $variant, $apiKey);
             if ($apiUrl !== null) {
                 return $apiUrl;
             }
         }
 
-        return self::urlFromKeywordPools($searchText, $width, $variant);
+        return self::urlFromKeywordPools($searchText, $width, $variant, $imageNiche);
     }
 
     /**
@@ -34,6 +35,12 @@ class WebsitePromptStockImages
      */
     public static function visualContext(array $content, string $siteType, string $userPrompt): string
     {
+        $promptOnly = ($content['generation_mode'] ?? '') === 'prompt' && trim($userPrompt) !== '';
+
+        if ($promptOnly) {
+            return self::normalizeSearchText(trim($userPrompt));
+        }
+
         $parts = array_filter([
             trim($userPrompt),
             (string) ($content['site_name'] ?? ''),
@@ -51,9 +58,26 @@ class WebsitePromptStockImages
         return Str::limit($text, 240, '');
     }
 
-    protected static function fallbackUrl(int $width): string
+    protected static function fallbackUrl(int $width, ?string $imageNiche = null): string
     {
+        if ($imageNiche !== null && $imageNiche !== '' && $imageNiche !== 'default') {
+            return self::urlFromKeywordPools($imageNiche.' business', $width, 0, $imageNiche);
+        }
+
         return 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w='.$width.'&q=80';
+    }
+
+    protected static function apiSearchQuery(string $searchText, ?string $imageNiche): string
+    {
+        if ($imageNiche === null || $imageNiche === '' || $imageNiche === 'default') {
+            return $searchText;
+        }
+
+        if (str_contains(strtolower($searchText), strtolower($imageNiche))) {
+            return $searchText;
+        }
+
+        return $imageNiche.' '.$searchText;
     }
 
     protected static function urlFromUnsplashApi(string $query, int $width, int $variant, string $apiKey): ?string
@@ -99,9 +123,18 @@ class WebsitePromptStockImages
         }
     }
 
-    protected static function urlFromKeywordPools(string $searchText, int $width, int $variant): string
+    protected static function urlFromKeywordPools(string $searchText, int $width, int $variant, ?string $imageNiche = null): string
     {
         $text = strtolower($searchText);
+        $pools = self::keywordPools();
+
+        if (WebsiteTemplates::resolveLocalNiche($searchText) === 'pet') {
+            $photos = $pools['pet']['photos'];
+            $index = abs(crc32($searchText.'|'.$variant)) % count($photos);
+
+            return 'https://images.unsplash.com/'.$photos[$index].'?auto=format&fit=crop&w='.$width.'&q=80';
+        }
+
         $bestPool = 'default';
         $bestScore = 0;
 
@@ -199,6 +232,15 @@ class WebsitePromptStockImages
                     'photo-1460925895917-afdab827c52f',
                     'photo-1551434678-e076c223a692',
                     'photo-1522071820081-009f0129c71c',
+                ],
+            ],
+            'creative' => [
+                'keywords' => ['creative', 'design', 'studio', 'agency', 'photography', 'portfolio', 'artist'],
+                'photos' => [
+                    'photo-1498050108023-c5249f4df085',
+                    'photo-1561070791-2526d30994b5',
+                    'photo-1452587925148-ce544e77e70d',
+                    'photo-1558655146-9a402cabf029',
                 ],
             ],
             'health' => [

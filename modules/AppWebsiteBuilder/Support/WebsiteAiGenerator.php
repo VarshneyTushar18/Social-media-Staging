@@ -4,6 +4,7 @@ namespace Modules\AppWebsiteBuilder\Support;
 
 use Illuminate\Support\Facades\Http;
 use Modules\AdminSettings\Support\OptionStore;
+use Modules\AdminUser\Models\User;
 use RuntimeException;
 use Throwable;
 
@@ -122,6 +123,18 @@ class WebsiteAiGenerator
             $payload['user_prompt'] = $ownerPrompt;
         }
 
+        $promptOnly = ($context['prompt_only'] ?? false) === true;
+        $owner = $context['user'] ?? null;
+        $runAiImages = $promptMode
+            && $promptOnly
+            && $owner instanceof User
+            && WebsitePromptImagePipeline::isAdminAiImagesEnabled();
+
+        if ($runAiImages) {
+            $payload['use_ai_images'] = true;
+            $payload['generation_mode'] = 'prompt';
+        }
+
         $enriched = WebsiteLandingAssets::enrich($payload, $siteType, $ownerPrompt);
         $enriched['layout_config'] = WebsiteAiLayout::resolve($layoutInput, $siteType, $ownerPrompt);
         $enriched['theme'] = WebsiteAiTheme::resolve(
@@ -133,6 +146,10 @@ class WebsiteAiGenerator
 
         if ($promptMode) {
             $enriched['user_prompt'] = $ownerPrompt;
+        }
+
+        if ($runAiImages) {
+            $enriched = WebsitePromptImagePipeline::generateForContent($owner, $enriched);
         }
 
         return $enriched;

@@ -271,15 +271,6 @@
                         <x-ui.alert class="mt-4" variant="danger" :description="$message" inline />
                     @enderror
 
-                    @if ($isGenerating)
-                        <x-ui.alert
-                            class="mt-4"
-                            variant="info"
-                            :description="__('Generating your website with AI… This may take up to a minute.')"
-                            inline
-                        />
-                    @endif
-
                     <form
                         wire:submit="generateFromUserPrompt"
                         class="mt-6 space-y-5"
@@ -287,12 +278,35 @@
                         wire:target="generateFromUserPrompt"
                     >
                         <div class="space-y-2.5">
-                            <x-ui.label for="website-ai-prompt">{{ __('Your prompt') }}</x-ui.label>
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <x-ui.label for="website-ai-prompt" class="mb-0">{{ __('Your prompt') }}</x-ui.label>
+                                <x-ui.button
+                                    type="button"
+                                    variant="outline"
+                                    class="h-9 shrink-0 justify-center text-xs sm:text-sm"
+                                    wire:click="suggestPromptWithAi"
+                                    wire:loading.attr="disabled"
+                                    wire:target="suggestPromptWithAi"
+                                    :disabled="$isGenerating || $isSuggestingPrompt"
+                                >
+                                    <span wire:loading.remove wire:target="suggestPromptWithAi" class="inline-flex items-center gap-1.5">
+                                        <i class="fa-solid fa-wand-magic-sparkles text-[11px]" aria-hidden="true"></i>
+                                        {{ __('AI prompt') }}
+                                    </span>
+                                    <span wire:loading wire:target="suggestPromptWithAi" class="inline-flex items-center gap-1.5">
+                                        <i class="fa-solid fa-spinner fa-spin text-[11px]" aria-hidden="true"></i>
+                                        {{ __('AI prompt…') }}
+                                    </span>
+                                </x-ui.button>
+                            </div>
+                            @error('suggestPrompt')
+                                <x-ui.alert variant="warning" :description="$message" inline />
+                            @enderror
                             <textarea
                                 id="website-ai-prompt"
                                 wire:model="userPrompt"
                                 rows="8"
-                                @if ($isGenerating) disabled @endif
+                                @disabled($isGenerating || $isSuggestingPrompt)
                                 placeholder="{{ __('e.g. Online fashion boutique for women. Elegant tone. Highlight new arrivals, free returns, and style guide. CTA: Shop the collection.') }}"
                                 class="flex min-h-[11rem] w-full border px-4 py-3.5 text-sm leading-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-[var(--theme-input-placeholder)] focus:border-[var(--theme-accent)] focus:ring-4 focus:ring-[color:rgba(var(--theme-accent-rgb),0.10)] disabled:cursor-not-allowed disabled:opacity-60"
                                 style="border-radius: var(--theme-input-radius, 0.75rem); border-color: var(--theme-border-color); background-color: var(--theme-input-surface); color: var(--theme-input-text);"
@@ -308,7 +322,7 @@
                                 wire:click="backToMethodStep"
                                 class="text-sm font-medium transition hover:opacity-80"
                                 style="color: var(--theme-muted-text-color);"
-                                @if ($isGenerating) disabled @endif
+                                @disabled($isGenerating || $isSuggestingPrompt)
                             >
                                 <i class="fa-solid fa-arrow-left mr-1 text-xs"></i>
                                 {{ __('Back to method') }}
@@ -318,6 +332,7 @@
                                 class="h-11 min-w-[10rem] justify-center"
                                 wire:loading.attr="disabled"
                                 wire:target="generateFromUserPrompt"
+                                :disabled="$isSuggestingPrompt || $isGenerating"
                             >
                                 <span wire:loading.remove wire:target="generateFromUserPrompt">
                                     <i class="fa-solid fa-wand-magic-sparkles mr-2 text-xs"></i>

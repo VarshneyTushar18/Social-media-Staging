@@ -134,7 +134,9 @@ class PortalCreditAccess
             'ai_studio_generate_video' => __('AI Video'),
             'ai_studio_review_content' => __('AI Review'),
             'ai_studio_semantic_search' => __('Semantic Search'),
+            'website_builder_ai_prompt_suggest' => __('Website Builder AI prompt suggestion'),
             'website_builder_ai_generate' => __('Website Builder AI site generation'),
+            'website_builder_ai_image' => __('Website Builder AI image'),
             'website_builder_ai_audit' => __('Website Builder AI site audit'),
         ];
 

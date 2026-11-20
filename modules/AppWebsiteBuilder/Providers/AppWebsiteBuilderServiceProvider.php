@@ -7,6 +7,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 use Modules\AppWebsiteBuilder\Http\Middleware\ServePublishedWebsiteByCustomDomain;
 use Modules\AppWebsiteBuilder\Support\WebsiteAiGenerator;
+use Modules\AppWebsiteBuilder\Support\WebsitePromptSuggester;
 use Modules\AppWebsiteBuilder\Support\WebsiteAuditService;
 use Modules\AppWebsiteBuilder\Support\WebsiteExternalPageSnapshot;
 use Modules\AppWebsiteBuilder\Support\WebsiteOverviewMetrics;
@@ -18,6 +19,7 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'modules.appwebsitebuilder');
         $this->app->singleton(WebsiteAiGenerator::class);
+        $this->app->singleton(WebsitePromptSuggester::class);
         $this->app->singleton(WebsiteAuditService::class);
         $this->app->singleton(WebsiteExternalPageSnapshot::class);
         $this->app->singleton(WebsiteSiteCreator::class);
@@ -40,6 +42,22 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
             'default_cost' => 2,
             'order' => 22,
             'description' => __('Credits deducted each time AI generates a website draft.'),
+        ]);
+
+        register_credit_action([
+            'key' => 'website_builder_ai_image',
+            'label' => __('Website Builder AI image'),
+            'default_cost' => 1,
+            'order' => 24,
+            'description' => __('Credits deducted for each AI-generated landing page image (when Admin → AI Image is enabled).'),
+        ]);
+
+        register_credit_action([
+            'key' => 'website_builder_ai_prompt_suggest',
+            'label' => __('Website Builder AI prompt suggestion'),
+            'default_cost' => 1,
+            'order' => 21,
+            'description' => __('Credits deducted each time AI expands your website owner brief.'),
         ]);
 
         register_credit_action([

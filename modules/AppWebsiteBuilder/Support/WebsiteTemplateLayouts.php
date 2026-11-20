@@ -17,8 +17,9 @@ class WebsiteTemplateLayouts
             'about' => 'split',
             'services' => 'image-cards',
             'highlights' => 'icon-cards',
+            'faq' => 'accordion',
             'contact' => 'gradient',
-            'sections' => ['about', 'services', 'highlights', 'contact'],
+            'sections' => WebsiteAiLayout::canonicalBodySectionOrder(),
         ];
 
         $galleryPreset = WebsiteTemplateLayoutPresets::forTemplate($templateId);

@@ -2,6 +2,7 @@
 
 namespace Modules\AppWebsiteBuilder\Support;
 
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class WebsiteTemplates
@@ -89,7 +90,16 @@ class WebsiteTemplates
     {
         $text = strtolower(trim($siteType));
 
-        if (str_contains($text, 'pet') || str_contains($text, 'groom') || str_contains($text, 'dog') || str_contains($text, 'cat')) {
+        if (
+            str_contains($text, 'pet')
+            || str_contains($text, 'groom')
+            || str_contains($text, 'dog')
+            || str_contains($text, 'cat')
+            || str_contains($text, 'puppy')
+            || str_contains($text, 'kitten')
+            || str_contains($text, 'veterinar')
+            || str_contains($text, 'animal')
+        ) {
             return 'pet';
         }
 
@@ -106,6 +116,105 @@ class WebsiteTemplates
         }
 
         return 'general';
+    }
+
+    /**
+     * Infer business type from a user prompt (niche before generic "store/shop" keywords).
+     *
+     * @return array{label: string, slug: string, image_niche: string}
+     */
+    public static function inferPromptSiteProfile(string $userPrompt): array
+    {
+        $userPrompt = trim($userPrompt);
+
+        if ($userPrompt === '') {
+            return [
+                'label' => __('Custom website'),
+                'slug' => 'general',
+                'image_niche' => 'default',
+            ];
+        }
+
+        $niche = self::resolveLocalNiche($userPrompt);
+
+        $slug = match (true) {
+            $niche === 'pet' => 'pet',
+            $niche === 'cleaning' => 'cleaning',
+            $niche === 'beauty' => 'beauty',
+            $niche === 'trades' => 'cleaning',
+            self::promptMentionsRestaurant($userPrompt) => 'restaurant',
+            self::promptMentionsCreative($userPrompt) => 'creative',
+            self::promptMentionsEcommerce($userPrompt) => 'ecommerce',
+            default => 'general',
+        };
+
+        $labels = self::galleryExampleSlugLabels();
+        $label = $labels[$slug] ?? Str::limit(trim(strtok($userPrompt, "\n") ?: $userPrompt), 120, '');
+
+        $imageNiche = match ($slug) {
+            'pet' => 'pet',
+            'cleaning' => 'cleaning',
+            'beauty' => 'beauty',
+            'restaurant' => 'restaurant',
+            'ecommerce' => 'ecommerce',
+            'creative' => 'creative',
+            default => 'default',
+        };
+
+        return [
+            'label' => $label,
+            'slug' => $slug,
+            'image_niche' => $imageNiche,
+        ];
+    }
+
+    protected static function promptMentionsRestaurant(string $text): bool
+    {
+        $text = strtolower($text);
+
+        foreach (['restaurant', 'cafe', 'café', 'food', 'dining', 'bistro', 'bakery', 'pizza', 'menu', 'chef'] as $token) {
+            if (str_contains($text, $token)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected static function promptMentionsCreative(string $text): bool
+    {
+        $text = strtolower($text);
+
+        foreach (['studio', 'agency', 'design', 'photography', 'portfolio', 'artist', 'creative'] as $token) {
+            if (str_contains($text, $token)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected static function promptMentionsEcommerce(string $text): bool
+    {
+        if (self::resolveLocalNiche($text) === 'pet') {
+            return false;
+        }
+
+        $text = strtolower($text);
+
+        foreach (['ecommerce', 'e-commerce', 'online store', 'marketplace', 'checkout', 'sell online'] as $token) {
+            if (str_contains($text, $token)) {
+                return true;
+            }
+        }
+
+        foreach (['store', 'shop', 'retail'] as $token) {
+            if (str_contains($text, $token)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function resolveCategory(string $siteType): string
@@ -845,6 +954,12 @@ class WebsiteTemplates
                     'items' => $copy['highlights_items'],
                 ],
                 [
+                    'type' => 'faq',
+                    'headline' => $copy['faq_headline'],
+                    'subheadline' => $copy['faq_subheadline'],
+                    'items' => $copy['faq_items'],
+                ],
+                [
                     'type' => 'contact',
                     'headline' => $copy['contact_headline'],
                     'body' => $copy['contact_body'],
@@ -918,6 +1033,14 @@ class WebsiteTemplates
                 ['title' => __('Editable copy'), 'description' => __('Update headlines and descriptions in the preview editor.'), 'icon' => 'pen', 'image_query' => 'writing desk'],
                 ['title' => __('Mobile ready'), 'description' => __('Looks great on phones and desktops out of the box.'), 'icon' => 'mobile-screen', 'image_query' => 'mobile phone'],
                 ['title' => __('Quick launch'), 'description' => __('Skip the blank page and publish faster.'), 'icon' => 'rocket', 'image_query' => 'startup'],
+            ],
+            'faq_headline' => __('Frequently asked questions'),
+            'faq_subheadline' => __('Quick answers before you reach out.'),
+            'faq_items' => [
+                ['question' => __('How do I book or request a quote?'), 'answer' => __('Use the contact form on this page or call us. We confirm details and timing with you directly.')],
+                ['question' => __('What services are included?'), 'answer' => __('See the services section for our main offers. Ask us if you need something customized.')],
+                ['question' => __('How soon will you respond?'), 'answer' => __('We aim to reply within one business day.')],
+                ['question' => __('Do you work with new customers?'), 'answer' => __('Yes — we welcome new clients. Tell us about your goals in the contact form.')],
             ],
             'contact_headline' => __('Get in touch'),
             'contact_body' => __('Tell us about your project—we typically respond within one business day.'),

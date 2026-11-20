@@ -38,25 +38,6 @@
                         </x-ui.card>
                     @endforeach
                 </div>
-
-                @if (count($recentSites ?? []) > 0)
-                    <x-ui.card class="space-y-3 p-4">
-                        <p class="text-sm font-semibold" style="color: var(--theme-header-text-color);">{{ __('Recently updated') }}</p>
-                        <ul class="divide-y" style="border-color: rgba(var(--theme-border-color-rgb), 0.4);">
-                            @foreach ($recentSites as $site)
-                                <li class="py-3 first:pt-0 last:pb-0">
-                                    <p class="truncate text-sm font-semibold" style="color: var(--theme-header-text-color);">{{ $site['name'] }}</p>
-                                    <p class="text-xs capitalize" style="color: var(--theme-muted-text-color);">
-                                        {{ $site['status'] }} · {{ $site['build_method'] }}
-                                        @if (! empty($site['updated_at']))
-                                            · {{ $site['updated_at'] }}
-                                        @endif
-                                    </p>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </x-ui.card>
-                @endif
             </div>
         </div>
     </div>

@@ -172,10 +172,10 @@ class StackPostsPlanSeeder extends Seeder
     {
         $permissions = $this->starterPermissions();
         $permissions['agent_social'] = true;
-        $permissions['agent_seo'] = false;
-        $permissions['agent_email'] = false;
-        $permissions['agent_website'] = false;
-        $permissions['max_agents_per_project'] = 1;
+        $permissions['agent_seo'] = true;
+        $permissions['agent_email'] = true;
+        $permissions['agent_website'] = true;
+        $permissions['max_agents_per_project'] = 4;
 
         return $permissions;
     }
@@ -221,10 +221,10 @@ class StackPostsPlanSeeder extends Seeder
             'rss_schedules' => false,
             'watermark' => false,
             'agent_social' => true,
-            'agent_seo' => false,
-            'agent_email' => false,
-            'agent_website' => false,
-            'max_agents_per_project' => 1,
+            'agent_seo' => true,
+            'agent_email' => true,
+            'agent_website' => true,
+            'max_agents_per_project' => 4,
         ];
     }
 
@@ -271,8 +271,8 @@ class StackPostsPlanSeeder extends Seeder
             'agent_social' => true,
             'agent_seo' => true,
             'agent_email' => true,
-            'agent_website' => false,
-            'max_agents_per_project' => 3,
+            'agent_website' => true,
+            'max_agents_per_project' => 4,
         ];
     }
 

@@ -3,6 +3,26 @@
 use Modules\AdminAI\Models\AiUsageLog;
 use Modules\AdminAI\Support\AiOptionCatalog;
 
+if (! function_exists('ai_usage_error_message_for_display')) {
+    function ai_usage_error_message_for_display(?string $message, int $maxLength = 600): string
+    {
+        if ($message === null || trim($message) === '') {
+            return '';
+        }
+
+        $message = trim($message);
+
+        $message = preg_replace('/\*{6,}/', '[redacted]', $message) ?? $message;
+        $message = preg_replace('/(https?:\/\/)\S{80,}/i', '$1…', $message) ?? $message;
+
+        if (mb_strlen($message) > $maxLength) {
+            return mb_substr($message, 0, $maxLength).'…';
+        }
+
+        return $message;
+    }
+}
+
 if (! function_exists('log_ai_usage')) {
     function log_ai_usage(array $attributes): AiUsageLog
     {

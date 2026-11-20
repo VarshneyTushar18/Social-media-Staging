@@ -178,14 +178,13 @@
                         <p class="text-xs font-semibold uppercase tracking-wide" style="color: var(--theme-muted-text-color);">{{ __('Template preview') }}</p>
                         <p class="truncate font-semibold" style="color: var(--theme-header-text-color);">{{ $previewTemplateName }}</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex shrink-0 flex-wrap items-center gap-2">
                         <x-ui.button
                             type="button"
                             variant="outline"
                             size="sm"
+                            class="shrink-0"
                             x-on:click="closePreview()"
-                            wire:loading.attr="disabled"
-                            wire:target="usePreviewedTemplate"
                         >
                             <i class="fa-solid fa-xmark"></i>
                             {{ __('Close') }}
@@ -193,12 +192,20 @@
                         <x-ui.button
                             type="button"
                             size="sm"
+                            class="min-w-[11.25rem] shrink-0"
                             wire:click="usePreviewedTemplate"
                             wire:loading.attr="disabled"
                             wire:target="usePreviewedTemplate"
                         >
-                            <span wire:loading.remove wire:target="usePreviewedTemplate">{{ __('Use this template') }}</span>
-                            <span wire:loading wire:target="usePreviewedTemplate">{{ __('Creating…') }}</span>
+                            <span class="inline-flex items-center justify-center gap-2">
+                                <i
+                                    wire:loading
+                                    wire:target="usePreviewedTemplate"
+                                    class="fa-solid fa-spinner fa-spin text-xs"
+                                    aria-hidden="true"
+                                ></i>
+                                <span>{{ __('Use this template') }}</span>
+                            </span>
                         </x-ui.button>
                     </div>
                     @error('useTemplate')

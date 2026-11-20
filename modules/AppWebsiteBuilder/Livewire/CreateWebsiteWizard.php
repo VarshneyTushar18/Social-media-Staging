@@ -4,11 +4,12 @@ namespace Modules\AppWebsiteBuilder\Livewire;
 
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Modules\AppAgencyOnboarding\Support\AgencyOnboarding;
 use Modules\AdminSettings\Support\OptionStore;
+use Modules\AppWebsiteBuilder\Support\WebsitePromptImagePipeline;
+use Modules\AppWebsiteBuilder\Support\WebsitePromptSuggester;
 use Modules\AppWebsiteBuilder\Support\WebsiteSiteCreator;
 use Modules\AppWebsiteBuilder\Support\WebsiteTemplates;
 use Throwable;
@@ -26,6 +27,8 @@ class CreateWebsiteWizard extends Component
     public string $siteType = '';
 
     public bool $isGenerating = false;
+
+    public bool $isSuggestingPrompt = false;
 
     public bool $isCreatingFromTemplate = false;
 
@@ -115,6 +118,68 @@ class CreateWebsiteWizard extends Component
         $this->resetErrorBag('siteType');
     }
 
+    public function updatedUserPrompt(): void
+    {
+        $this->resetErrorBag('suggestPrompt');
+    }
+
+    public function suggestPromptWithAi(WebsitePromptSuggester $suggester): void
+    {
+        abort_unless($this->buildPath === 'ai' && $this->step === 2, 403);
+
+        $this->resetErrorBag('suggestPrompt');
+
+        $seed = trim($this->userPrompt);
+        $onboarding = app(AgencyOnboarding::class);
+        $user = auth()->user();
+        $project = $onboarding->activeProject($user);
+        $projectName = $project?->name ?? '';
+
+        if ($seed === '') {
+            $this->addError('suggestPrompt', __('Enter a short idea about your business in the prompt box.'));
+
+            return;
+        }
+
+        if (strlen($seed) < 3) {
+            $this->addError('suggestPrompt', __('Enter at least a few characters about your business.'));
+
+            return;
+        }
+
+        abort_unless($user, 403);
+
+        if (function_exists('credit_service')) {
+            try {
+                credit_service()->ensureCanConsume($user, 'website_builder_ai_prompt_suggest');
+            } catch (Throwable $exception) {
+                $this->addError('suggestPrompt', $exception->getMessage());
+
+                return;
+            }
+        }
+
+        $this->isSuggestingPrompt = true;
+
+        try {
+            $this->userPrompt = $suggester->suggest($seed, (string) $projectName);
+
+            if (function_exists('consume_credits')) {
+                consume_credits($user, 'website_builder_ai_prompt_suggest', [
+                    'feature' => 'website-builder.prompt-suggest',
+                    'metadata' => [
+                        'project_id' => $project?->id,
+                        'seed_chars' => strlen($seed),
+                    ],
+                ]);
+            }
+        } catch (Throwable $exception) {
+            $this->addError('suggestPrompt', $exception->getMessage());
+        } finally {
+            $this->isSuggestingPrompt = false;
+        }
+    }
+
     public function generateFromUserPrompt(WebsiteSiteCreator $creator): void
     {
         abort_unless($this->buildPath === 'ai' && $this->step === 2, 403);
@@ -124,7 +189,7 @@ class CreateWebsiteWizard extends Component
         ]);
 
         $prompt = trim($this->userPrompt);
-        $type = $this->siteTypeFromPrompt($prompt);
+        $type = WebsiteTemplates::inferPromptSiteProfile($prompt)['label'];
 
         $onboarding = app(AgencyOnboarding::class);
         $user = auth()->user();
@@ -222,6 +287,18 @@ class CreateWebsiteWizard extends Component
         $this->isGenerating = true;
 
         try {
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(600);
+            }
+
+            if (WebsitePromptImagePipeline::isAdminAiImagesEnabled() && function_exists('credit_service')) {
+                credit_service()->ensureCanConsume(
+                    $user,
+                    'website_builder_ai_image',
+                    WebsitePromptImagePipeline::MAX_IMAGE_CREDITS_PER_SITE,
+                );
+            }
+
             $site = $creator->createWithAi($user, $project, $type, [
                 'user_prompt' => $userPrompt,
             ]);
@@ -264,14 +341,4 @@ class CreateWebsiteWizard extends Component
         }
     }
 
-    protected function siteTypeFromPrompt(string $prompt): string
-    {
-        $firstLine = trim(strtok($prompt, "\n") ?: $prompt);
-
-        if ($firstLine !== '') {
-            return Str::limit($firstLine, 120, '');
-        }
-
-        return __('Custom website');
-    }
 }

@@ -16,6 +16,7 @@
     $about = collect($sections)->first(fn ($s) => strtolower((string) data_get($s, 'type')) === 'about') ?? [];
     $services = collect($sections)->first(fn ($s) => strtolower((string) data_get($s, 'type')) === 'services') ?? [];
     $highlights = collect($sections)->first(fn ($s) => strtolower((string) data_get($s, 'type')) === 'highlights') ?? [];
+    $faq = collect($sections)->first(fn ($s) => strtolower((string) data_get($s, 'type')) === 'faq') ?? [];
     $contact = collect($sections)->first(fn ($s) => strtolower((string) data_get($s, 'type')) === 'contact') ?? [];
 
     $imageFallbacks = \Modules\AppWebsiteBuilder\Support\WebsiteLandingAssets::landingImageFallbacks(
@@ -47,8 +48,9 @@
             'about' => 'split',
             'services' => 'image-cards',
             'highlights' => 'icon-cards',
+            'faq' => 'accordion',
             'contact' => 'gradient',
-            'sections' => ['about', 'services', 'highlights', 'contact'],
+            'sections' => \Modules\AppWebsiteBuilder\Support\WebsiteAiLayout::canonicalBodySectionOrder(),
         ];
     }
 
@@ -67,7 +69,7 @@
     }
 
     $templateKey = (string) ($layout['template_key'] ?? $templateIdFromContent ?: 'default');
-    $sectionOrder = (array) ($layout['sections'] ?? ['about', 'services', 'highlights', 'contact']);
+    $sectionOrder = \Modules\AppWebsiteBuilder\Support\WebsiteAiLayout::canonicalBodySectionOrder();
 
     $theme = is_array($content['theme'] ?? null) ? $content['theme'] : [];
     $themeCssVars = $isPromptSite && $theme !== []
@@ -107,7 +109,7 @@
         ['href' => '#home', 'label' => __('Home')],
         ['href' => '#about', 'label' => __('About')],
         ['href' => '#services', 'label' => __('Services')],
-        ['href' => '#content', 'label' => __('Content')],
+        ['href' => '#faq', 'label' => __('FAQ')],
         ['href' => '#contact', 'label' => __('Contact')],
     ];
 @endphp
@@ -140,6 +142,9 @@
                 @break
             @case('highlights')
                 @include('appwebsitebuilder::partials.landing.highlights')
+                @break
+            @case('faq')
+                @include('appwebsitebuilder::partials.landing.faq')
                 @break
             @case('contact')
                 @include('appwebsitebuilder::partials.landing.contact')

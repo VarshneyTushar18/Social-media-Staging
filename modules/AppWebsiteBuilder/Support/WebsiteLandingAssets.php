@@ -21,6 +21,15 @@ class WebsiteLandingAssets
 
         $visualContext = WebsitePromptStockImages::visualContext($content, $siteType, $userPrompt);
         $promptDrivenImages = trim($userPrompt) !== '' || ($content['generation_mode'] ?? '') === 'prompt';
+        $useAiImages = $promptDrivenImages && (($content['use_ai_images'] ?? false) === true);
+        if ($useAiImages && ! self::contentHasStoredImageUrls($content)) {
+            $brokenAiImages = ($content['images_source'] ?? '') === 'ai'
+                || ((int) ($content['ai_images_generated'] ?? 0)) > 0;
+            if ($brokenAiImages) {
+                $useAiImages = false;
+            }
+        }
+        $assignPromptStock = $promptDrivenImages && ! $useAiImages;
 
         $gallerySlug = null;
 
@@ -34,9 +43,9 @@ class WebsiteLandingAssets
         $heroQuery = (string) ($content['hero_image_query'] ?? $siteType);
 
         if (! self::hasPersistedImageUrl((string) ($content['hero_image_url'] ?? ''))) {
-            $content['hero_image_url'] = $promptDrivenImages
+            $content['hero_image_url'] = $assignPromptStock
                 ? WebsitePromptStockImages::url($visualContext.' '.$heroQuery, 1600, 0)
-                : self::heroImageUrl($stockContext, $heroQuery);
+                : ($useAiImages ? '' : self::heroImageUrl($stockContext, $heroQuery));
         }
         $content['hero_image_alt'] = (string) ($content['hero_image_alt'] ?? __('Hero image for :type', ['type' => $siteType]));
 
@@ -63,9 +72,9 @@ class WebsiteLandingAssets
                         $heroStyle = (string) ($layout['hero'] ?? 'split');
 
                         if (in_array($heroStyle, ['split', 'overlap'], true)) {
-                            $section['image_url'] = $promptDrivenImages
+                            $section['image_url'] = $assignPromptStock
                                 ? WebsitePromptStockImages::url($visualContext.' '.$heroQuery.' portrait', 1200, 4)
-                                : self::aboutImageUrl($stockContext, $heroQuery.' feature');
+                                : ($useAiImages ? '' : self::aboutImageUrl($stockContext, $heroQuery.' feature'));
                         } elseif (self::hasPersistedImageUrl((string) ($content['hero_image_url'] ?? ''))) {
                             $section['image_url'] = (string) $content['hero_image_url'];
                         }
@@ -77,18 +86,28 @@ class WebsiteLandingAssets
 
             if ($type === 'about' && ! $useGalleryStockLock) {
                 $aboutQuery = (string) ($section['image_query'] ?? $siteType.' team');
-                $section['image_url'] = $section['image_url'] ?? (
-                    $promptDrivenImages
+                if (! self::hasPersistedImageUrl((string) ($section['image_url'] ?? ''))) {
+                    $section['image_url'] = $assignPromptStock
                         ? WebsitePromptStockImages::url($visualContext.' about '.$aboutQuery, 900, 2)
-                        : self::aboutImageUrl($stockContext, $aboutQuery)
-                );
+                        : ($useAiImages ? '' : self::aboutImageUrl($stockContext, $aboutQuery));
+                }
                 $section['image_alt'] = $section['image_alt'] ?? __('About :name', ['name' => $content['site_name'] ?? $siteType]);
             }
 
-            if ($type === 'contact' && empty($section['image_url'])) {
-                $section['image_url'] = $promptDrivenImages
+            if ($type === 'contact' && ! self::hasPersistedImageUrl((string) ($section['image_url'] ?? ''))) {
+                $section['image_url'] = $assignPromptStock
                     ? WebsitePromptStockImages::url($visualContext.' contact location', 1200, 3)
-                    : self::contactBackgroundImageUrl($stockContext);
+                    : ($useAiImages ? '' : self::contactBackgroundImageUrl($stockContext));
+            }
+
+            if ($type === 'faq' && is_array($section['items'] ?? null)) {
+                foreach ($section['items'] as $itemIndex => $item) {
+                    if (! is_array($item)) {
+                        continue;
+                    }
+
+                    $section['items'][$itemIndex] = self::normalizeFaqItem($item);
+                }
             }
 
             if (in_array($type, ['services', 'highlights'], true) && is_array($section['items'] ?? null)) {
@@ -103,18 +122,18 @@ class WebsiteLandingAssets
                     if ($type === 'services' && ! $useGalleryStockLock) {
                         $itemQuery = (string) ($item['image_query'] ?? ($item['title'] ?? 'service'));
                         $itemTitle = (string) ($item['title'] ?? '');
-                        $item['image_url'] = $item['image_url'] ?? (
-                            $promptDrivenImages
+                        if (! self::hasPersistedImageUrl((string) ($item['image_url'] ?? ''))) {
+                            $item['image_url'] = $assignPromptStock
                                 ? WebsitePromptStockImages::url($visualContext.' '.$itemQuery.' '.$itemTitle, 800, 10 + $itemIndex)
-                                : self::serviceImageUrl($stockContext, $itemQuery, $itemIndex)
-                        );
+                                : ($useAiImages ? '' : self::serviceImageUrl($stockContext, $itemQuery, $itemIndex));
+                        }
                     }
 
-                    if ($type === 'highlights' && ! $useGalleryStockLock && empty($item['image_url'] ?? null)) {
+                    if ($type === 'highlights' && ! $useGalleryStockLock && ! self::hasPersistedImageUrl((string) ($item['image_url'] ?? ''))) {
                         $itemQuery = (string) ($item['image_query'] ?? ($item['title'] ?? 'highlight'));
-                        $item['image_url'] = $promptDrivenImages
+                        $item['image_url'] = $assignPromptStock
                             ? WebsitePromptStockImages::url($visualContext.' '.$itemQuery, 800, 20 + $itemIndex)
-                            : self::serviceImageUrl($stockContext, $itemQuery, $itemIndex + 3);
+                            : ($useAiImages ? '' : self::serviceImageUrl($stockContext, $itemQuery, $itemIndex + 3));
                     }
 
                     $section['items'][$itemIndex] = $item;
@@ -127,9 +146,11 @@ class WebsiteLandingAssets
         $siteName = (string) ($content['site_name'] ?? $siteType);
         $promptMode = ($content['generation_mode'] ?? '') === 'prompt' || trim($userPrompt) !== '';
         $content['sections'] = self::ensureHighlightsSection($sections, $siteType, $siteName, $promptMode);
+        $content['sections'] = self::ensureFaqSection($content['sections'], $siteName, $siteType, $promptMode);
         $content['sections'] = self::orderSections($content['sections']);
         $content['sections'] = self::completeHighlightsCopy($content['sections'], $siteName, $promptMode);
         $content['sections'] = self::completeServicesCopy($content['sections']);
+        $content['sections'] = self::completeFaqCopy($content['sections'], $siteName, $siteType, $promptMode);
         $content['sections'] = self::completeContactCopy($content['sections'], $promptMode);
 
         if (($content['source'] ?? '') === 'template') {
@@ -147,7 +168,7 @@ class WebsiteLandingAssets
             $siteType,
             $heroQuery,
             $visualContext,
-            $promptDrivenImages,
+            $assignPromptStock,
             $stockContext,
         );
     }
@@ -161,9 +182,13 @@ class WebsiteLandingAssets
         string $siteType,
         string $heroQuery,
         string $visualContext,
-        bool $promptDrivenImages,
+        bool $assignPromptStock,
         string $stockContext,
     ): array {
+        if (($content['use_ai_images'] ?? false) === true) {
+            return $content;
+        }
+
         $templateId = (string) ($content['template_id'] ?? '');
 
         if ($templateId !== '' && WebsiteTemplateGalleryCatalog::slugForTemplateId($templateId) !== null) {
@@ -212,12 +237,12 @@ class WebsiteLandingAssets
                 }
             }
 
-            $section['image_url'] = $promptDrivenImages
+            $section['image_url'] = $assignPromptStock
                 ? WebsitePromptStockImages::url($visualContext.' '.$heroQuery.' feature', 1200, 7)
                 : self::aboutImageUrl($stockContext, $aboutQuery);
 
             if (self::normalizePhotoKey((string) $section['image_url']) === $backgroundKey) {
-                $section['image_url'] = $promptDrivenImages
+                $section['image_url'] = $assignPromptStock
                     ? WebsitePromptStockImages::url($visualContext.' '.$heroQuery.' showcase', 1200, 11)
                     : self::serviceImageUrl($stockContext, $heroQuery, 2);
             }
@@ -238,6 +263,11 @@ class WebsiteLandingAssets
         }
 
         return trim($url);
+    }
+
+    public static function normalizePhotoKeyPublic(string $url): string
+    {
+        return self::normalizePhotoKey($url);
     }
 
     public static function isSamePhoto(string $a, string $b): bool
@@ -398,6 +428,112 @@ class WebsiteLandingAssets
         return $sections;
     }
 
+    protected static function ensureFaqSection(array $sections, string $siteName, string $siteType, bool $promptMode = false): array
+    {
+        foreach ($sections as $section) {
+            if (is_array($section) && strtolower((string) ($section['type'] ?? '')) === 'faq') {
+                return $sections;
+            }
+        }
+
+        $sections[] = [
+            'type' => 'faq',
+            'headline' => __('Frequently asked questions'),
+            'subheadline' => $promptMode ? '' : __('Quick answers before you get in touch.'),
+            'items' => $promptMode ? [] : self::defaultFaqItems($siteName, $siteType),
+        ];
+
+        return $sections;
+    }
+
+    /**
+     * @return list<array{question: string, answer: string}>
+     */
+    protected static function defaultFaqItems(string $siteName, string $siteType): array
+    {
+        $typeLabel = trim($siteType) !== '' ? trim($siteType) : $siteName;
+
+        return [
+            [
+                'question' => __('What does :name offer?', ['name' => $siteName]),
+                'answer' => __(':name provides professional :type services tailored to your needs. Explore the services section for details.', [
+                    'name' => $siteName,
+                    'type' => strtolower($typeLabel),
+                ]),
+            ],
+            [
+                'question' => __('How do I get started?'),
+                'answer' => __('Use the contact form below or reach out by email or phone. We typically reply within one business day.'),
+            ],
+            [
+                'question' => __('Do you serve my area?'),
+                'answer' => __('We work with customers in and around our service area. Send us a message with your location and we will confirm availability.'),
+            ],
+            [
+                'question' => __('What are your hours?'),
+                'answer' => __('Hours vary by service. Contact us for the latest schedule and appointment options.'),
+            ],
+        ];
+    }
+
+    protected static function completeFaqCopy(array $sections, string $siteName, string $siteType, bool $promptMode = false): array
+    {
+        foreach ($sections as $index => $section) {
+            if (! is_array($section) || strtolower((string) ($section['type'] ?? '')) !== 'faq') {
+                continue;
+            }
+
+            if (! filled($section['headline'] ?? null)) {
+                $section['headline'] = __('Frequently asked questions');
+            }
+
+            if (! $promptMode && ! filled($section['subheadline'] ?? null)) {
+                $section['subheadline'] = __('Quick answers before you get in touch.');
+            }
+
+            $items = is_array($section['items'] ?? null) ? $section['items'] : [];
+            if ($items === []) {
+                $section['items'] = self::defaultFaqItems($siteName, $siteType);
+            } else {
+                foreach ($items as $itemIndex => $item) {
+                    if (is_array($item)) {
+                        $section['items'][$itemIndex] = self::normalizeFaqItem($item);
+                    }
+                }
+            }
+
+            $sections[$index] = $section;
+            break;
+        }
+
+        return $sections;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array{question: string, answer: string}
+     */
+    protected static function normalizeFaqItem(array $item): array
+    {
+        if (! filled($item['question'] ?? null) && filled($item['title'] ?? null)) {
+            $item['question'] = (string) $item['title'];
+        }
+
+        if (! filled($item['answer'] ?? null)) {
+            foreach (['body', 'description', 'text'] as $key) {
+                if (filled($item[$key] ?? null)) {
+                    $item['answer'] = (string) $item[$key];
+                    break;
+                }
+            }
+        }
+
+        return [
+            'question' => trim((string) ($item['question'] ?? '')),
+            'answer' => trim((string) ($item['answer'] ?? '')),
+        ];
+    }
+
     /**
      * @param  array<int, array<string, mixed>>  $sections
      * @return array<int, array<string, mixed>>
@@ -408,7 +544,7 @@ class WebsiteLandingAssets
      */
     protected static function normalizeSectionTypes(array $sections): array
     {
-        $fallbackTypes = ['hero', 'about', 'services', 'highlights', 'contact'];
+        $fallbackTypes = ['hero', 'about', 'services', 'highlights', 'faq', 'contact'];
 
         foreach ($sections as $index => $section) {
             if (! is_array($section)) {
@@ -427,7 +563,7 @@ class WebsiteLandingAssets
 
     protected static function orderSections(array $sections): array
     {
-        $order = ['hero' => 1, 'about' => 2, 'services' => 3, 'highlights' => 4, 'contact' => 5];
+        $order = ['hero' => 1, 'about' => 2, 'services' => 3, 'highlights' => 4, 'faq' => 5, 'contact' => 6];
 
         return collect($sections)
             ->filter(fn ($section) => is_array($section))
@@ -463,11 +599,46 @@ class WebsiteLandingAssets
         return self::sanitizeHex($value, $fallback);
     }
 
-    protected static function hasPersistedImageUrl(string $url): bool
+    public static function hasPublicImageUrl(string $url): bool
     {
         $url = trim($url);
 
         return $url !== '' && (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $content
+     */
+    public static function contentHasStoredImageUrls(array $content): bool
+    {
+        if (self::hasPersistedImageUrl((string) ($content['hero_image_url'] ?? ''))) {
+            return true;
+        }
+
+        foreach ((array) ($content['sections'] ?? []) as $section) {
+            if (! is_array($section)) {
+                continue;
+            }
+
+            if (self::hasPersistedImageUrl((string) ($section['image_url'] ?? ''))) {
+                return true;
+            }
+
+            if (is_array($section['items'] ?? null)) {
+                foreach ($section['items'] as $item) {
+                    if (is_array($item) && self::hasPersistedImageUrl((string) ($item['image_url'] ?? ''))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    protected static function hasPersistedImageUrl(string $url): bool
+    {
+        return self::hasPublicImageUrl($url);
     }
 
     protected static function sanitizeHex(string $value, string $fallback): string
@@ -501,7 +672,7 @@ class WebsiteLandingAssets
             'beauty', 'salon', 'barber' => 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1600&q=80',
             'restaurant', 'food' => 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80',
             'cleaning' => 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1600&q=80',
-            'pet', 'grooming' => 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1600&q=80',
+            'pet', 'grooming' => 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=1600&q=80',
             'contractor', 'construction' => 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1600&q=80',
             default => 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1600&q=80',
         };
@@ -551,7 +722,7 @@ class WebsiteLandingAssets
                 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80',
             ],
             'pet', 'grooming' => [
-                'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=800&q=80',
                 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=800&q=80',
                 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=800&q=80',
                 'https://images.unsplash.com/photo-1530281700549-e82e7bf110d6?auto=format&fit=crop&w=800&q=80',
@@ -594,9 +765,49 @@ class WebsiteLandingAssets
     {
         $text = strtolower($text);
 
-        foreach (['ecommerce', 'store', 'shop', 'beauty', 'salon', 'barber', 'restaurant', 'food', 'cleaning', 'pet', 'grooming', 'creative', 'contractor', 'construction'] as $token) {
+        if (WebsiteTemplates::resolveLocalNiche($text) === 'pet') {
+            return 'pet';
+        }
+
+        foreach (['cleaning', 'janitorial', 'housekeeping'] as $token) {
             if (str_contains($text, $token)) {
-                return $token;
+                return 'cleaning';
+            }
+        }
+
+        foreach (['beauty', 'salon', 'barber', 'makeup', 'nails'] as $token) {
+            if (str_contains($text, $token)) {
+                return 'beauty';
+            }
+        }
+
+        foreach (['restaurant', 'food', 'cafe', 'dining', 'bakery', 'bistro'] as $token) {
+            if (str_contains($text, $token)) {
+                return 'restaurant';
+            }
+        }
+
+        foreach (['creative', 'agency', 'studio', 'portfolio', 'design'] as $token) {
+            if (str_contains($text, $token)) {
+                return 'creative';
+            }
+        }
+
+        foreach (['contractor', 'construction', 'plumber', 'electrician', 'roofing'] as $token) {
+            if (str_contains($text, $token)) {
+                return 'contractor';
+            }
+        }
+
+        foreach (['ecommerce', 'e-commerce'] as $token) {
+            if (str_contains($text, $token)) {
+                return 'ecommerce';
+            }
+        }
+
+        foreach (['store', 'shop', 'retail', 'marketplace'] as $token) {
+            if (str_contains($text, $token)) {
+                return 'store';
             }
         }
 
@@ -611,8 +822,28 @@ class WebsiteLandingAssets
      */
     public static function ensureUniqueLandingImages(array $content): array
     {
+        if (($content['use_ai_images'] ?? false) === true && ! self::contentHasStoredImageUrls($content)) {
+            return $content;
+        }
+
+        if (
+            (($content['images_source'] ?? '') === 'ai' || ($content['use_ai_images'] ?? false) === true)
+            && self::contentHasStoredImageUrls($content)
+        ) {
+            return $content;
+        }
+
+        if (($content['generation_mode'] ?? '') === 'prompt') {
+            $siteType = (string) ($content['site_type'] ?? $content['site_name'] ?? 'business');
+
+            return self::ensureUniquePromptLandingImages(
+                $content,
+                self::imageContextForStock($content, $siteType),
+            );
+        }
+
         $siteType = (string) ($content['site_type'] ?? $content['site_name'] ?? 'business');
-        $pool = self::imagePoolForContent($content, $siteType);
+        $pool = self::imagePoolForContent($content, $siteType, self::imageContextForStock($content, $siteType));
 
         if ($pool === []) {
             return $content;
@@ -698,12 +929,109 @@ class WebsiteLandingAssets
 
     /**
      * @param  array<string, mixed>  $content
+     * @return array<string, mixed>
+     */
+    protected static function ensureUniquePromptLandingImages(
+        array $content,
+        string $visualContext,
+    ): array {
+        /** @var array<string, true> $used */
+        $used = [];
+        $variant = 200;
+
+        $claimOrReplace = static function (string $url, int $width, string $querySeed) use (
+            &$used,
+            &$variant,
+            $visualContext,
+        ): string {
+            $url = trim($url);
+            $key = $url === '' ? '' : self::normalizePhotoKey($url);
+
+            if ($url !== '' && $key !== '' && ! isset($used[$key])) {
+                $used[$key] = true;
+
+                return $url;
+            }
+
+            for ($attempt = 0; $attempt < 24; $attempt++) {
+                $variant++;
+                $candidate = WebsitePromptStockImages::url(
+                    $visualContext.' '.$querySeed,
+                    $width,
+                    $variant,
+                );
+                $candidateKey = self::normalizePhotoKey($candidate);
+
+                if ($candidateKey === '' || isset($used[$candidateKey])) {
+                    continue;
+                }
+
+                $used[$candidateKey] = true;
+
+                return $candidate;
+            }
+
+            $variant++;
+            $fallback = WebsitePromptStockImages::url($visualContext.' '.$querySeed, $width, $variant);
+            $used[self::normalizePhotoKey($fallback)] = true;
+
+            return $fallback;
+        };
+
+        $heroQuery = (string) ($content['hero_image_query'] ?? 'hero');
+        $content['hero_image_url'] = $claimOrReplace((string) ($content['hero_image_url'] ?? ''), 1600, $heroQuery);
+
+        $sections = is_array($content['sections'] ?? null) ? $content['sections'] : [];
+
+        foreach ($sections as $index => $section) {
+            if (! is_array($section)) {
+                continue;
+            }
+
+            $type = strtolower((string) ($section['type'] ?? ''));
+
+            if ($type === 'hero' && array_key_exists('image_url', $section)) {
+                $section['image_url'] = $claimOrReplace((string) ($section['image_url'] ?? ''), 1200, $heroQuery.' feature');
+            }
+
+            if ($type === 'about') {
+                $aboutQuery = (string) ($section['image_query'] ?? 'about');
+                $section['image_url'] = $claimOrReplace((string) ($section['image_url'] ?? ''), 900, 'about '.$aboutQuery);
+            }
+
+            if ($type === 'contact' && filled($section['image_url'] ?? null)) {
+                $section['image_url'] = $claimOrReplace((string) $section['image_url'], 1200, 'contact');
+            }
+
+            if (in_array($type, ['services', 'highlights'], true) && is_array($section['items'] ?? null)) {
+                foreach ($section['items'] as $itemIndex => $item) {
+                    if (! is_array($item) || ! filled($item['image_url'] ?? null)) {
+                        continue;
+                    }
+
+                    $itemQuery = (string) ($item['image_query'] ?? ($item['title'] ?? $type));
+                    $item['image_url'] = $claimOrReplace((string) $item['image_url'], 800, $itemQuery);
+                    $section['items'][$itemIndex] = $item;
+                }
+            }
+
+            $sections[$index] = $section;
+        }
+
+        $content['sections'] = $sections;
+
+        return $content;
+    }
+
+    /**
+     * @param  array<string, mixed>  $content
      * @return array{hero: string, feature: string, about: string, service: string}
      */
     public static function landingImageFallbacks(array $content, string $siteType = 'business'): array
     {
         $generic = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80';
-        $pool = self::imagePoolForContent($content, $siteType);
+        $stockContext = self::imageContextForStock($content, $siteType);
+        $pool = self::imagePoolForContent($content, $siteType, $stockContext);
 
         if ($pool === []) {
             return [
@@ -728,7 +1056,7 @@ class WebsiteLandingAssets
      * @param  array<string, mixed>  $content
      * @return list<string>
      */
-    protected static function imagePoolForContent(array $content, string $siteType): array
+    protected static function imagePoolForContent(array $content, string $siteType, string $stockContext): array
     {
         $templateId = (string) ($content['template_id'] ?? '');
 
@@ -743,10 +1071,20 @@ class WebsiteLandingAssets
         $pool = [];
 
         for ($index = 0; $index < 12; $index++) {
-            $pool[] = self::serviceImageUrl($siteType, $siteType, $index);
+            $pool[] = self::serviceImageUrl($stockContext, $stockContext, $index);
         }
 
         return self::uniqueUrlsByPhotoKey($pool);
+    }
+
+    /**
+     * @param  array<string, mixed>  $content
+     */
+    protected static function imageContextForStock(array $content, string $siteType): string
+    {
+        $context = WebsitePromptStockImages::visualContext($content, $siteType, (string) ($content['user_prompt'] ?? ''));
+
+        return $context !== '' ? $context : $siteType;
     }
 
     /**

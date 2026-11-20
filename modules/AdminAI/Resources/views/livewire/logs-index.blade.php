@@ -1,7 +1,7 @@
 @php
     $totalLogs = $logs->count();
     $successfulLogs = $logs->where('status', 'success')->count();
-    $failedLogs = $logs->where('status', 'failed')->count();
+    $failedLogs = $logs->whereIn('status', ['failed', 'error'])->count();
     $totalTokens = (int) $logs->sum('total_tokens');
 @endphp
 
@@ -120,8 +120,8 @@
                         <x-ui.table-cell><x-ui.badge variant="neutral">{{ strtoupper($log->provider) }}</x-ui.badge></x-ui.table-cell>
                         <x-ui.table-cell><p class="font-semibold" style="color: var(--theme-header-text-color);">{{ ucfirst($log->capability) }}</p></x-ui.table-cell>
                         <x-ui.table-cell><div class="space-y-1"><p class="break-all font-semibold" style="color: var(--theme-header-text-color);">{{ $log->model }}</p>@if ($log->feature || $log->route_name)<p class="text-xs" style="color: var(--theme-muted-text-color);">{{ collect([$log->feature, $log->route_name])->filter()->implode(' | ') }}</p>@endif</div></x-ui.table-cell>
-                        <x-ui.table-cell><x-ui.badge :variant="$log->status === 'success' ? 'success' : ($log->status === 'failed' ? 'danger' : 'neutral')">{{ strtoupper($log->status) }}</x-ui.badge></x-ui.table-cell>
-                        <x-ui.table-cell><div class="space-y-1"><p class="font-medium" style="color: var(--theme-header-text-color);">{{ __('Tokens: :count', ['count' => number_format((int) ($log->total_tokens ?? 0))]) }}</p><p class="text-xs" style="color: var(--theme-muted-text-color);">{{ collect([$log->prompt_tokens !== null ? 'prompt: '.number_format((int) $log->prompt_tokens) : null, $log->completion_tokens !== null ? 'completion: '.number_format((int) $log->completion_tokens) : null, $log->estimated_cost !== null ? 'cost: $'.number_format((float) $log->estimated_cost, 6) : null, $log->latency_ms !== null ? 'latency: '.number_format((int) $log->latency_ms).'ms' : null])->filter()->implode(' | ') ?: __('No usage metadata') }}</p>@if ($log->error_message)<p class="text-xs" style="color: var(--theme-danger-color);">{{ $log->error_message }}</p>@endif</div></x-ui.table-cell>
+                        <x-ui.table-cell><x-ui.badge :variant="$log->status === 'success' ? 'success' : (in_array($log->status, ['failed', 'error'], true) ? 'danger' : 'neutral')">{{ strtoupper($log->status) }}</x-ui.badge></x-ui.table-cell>
+                        <x-ui.table-cell><div class="space-y-1"><p class="font-medium" style="color: var(--theme-header-text-color);">{{ __('Tokens: :count', ['count' => number_format((int) ($log->total_tokens ?? 0))]) }}</p><p class="text-xs" style="color: var(--theme-muted-text-color);">{{ collect([$log->prompt_tokens !== null ? 'prompt: '.number_format((int) $log->prompt_tokens) : null, $log->completion_tokens !== null ? 'completion: '.number_format((int) $log->completion_tokens) : null, $log->estimated_cost !== null ? 'cost: $'.number_format((float) $log->estimated_cost, 6) : null, $log->latency_ms !== null ? 'latency: '.number_format((int) $log->latency_ms).'ms' : null])->filter()->implode(' | ') ?: __('No usage metadata') }}</p>@if ($log->error_message)<p class="max-w-md break-all text-xs leading-5" style="color: var(--theme-danger-color); overflow-wrap: anywhere;">{{ function_exists('ai_usage_error_message_for_display') ? ai_usage_error_message_for_display($log->error_message) : $log->error_message }}</p>@endif</div></x-ui.table-cell>
                         <x-ui.table-cell>{{ $log->created_at?->format('Y-m-d H:i:s') }}</x-ui.table-cell>
                     </x-ui.table-row>
                 @empty

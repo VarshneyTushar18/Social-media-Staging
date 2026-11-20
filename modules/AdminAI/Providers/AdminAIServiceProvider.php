@@ -68,7 +68,7 @@ class AdminAIServiceProvider extends ServiceProvider
 
                 $totalRequests = $logs->count();
                 $successfulRequests = $logs->where('status', 'success')->count();
-                $failedRequests = $logs->where('status', 'failed')->count();
+                $failedRequests = $logs->filter(fn ($log) => in_array($log->status, ['failed', 'error'], true))->count();
                 $latencyLogs = $logs->whereNotNull('latency_ms');
 
                 return [

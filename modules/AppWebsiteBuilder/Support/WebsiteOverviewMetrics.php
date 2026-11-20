@@ -54,11 +54,10 @@ class WebsiteOverviewMetrics
                     'ai_built' => 0,
                     'template_built' => 0,
                 ],
-                'recentSites' => [],
             ];
         }
 
-        $sites = (clone $query)->latest('updated_at')->get();
+        $sites = (clone $query)->get();
 
         return [
             'metrics' => [
@@ -68,13 +67,6 @@ class WebsiteOverviewMetrics
                 'ai_built' => $sites->where('build_method', 'ai')->count(),
                 'template_built' => $sites->where('build_method', 'template')->count(),
             ],
-            'recentSites' => $sites->take(5)->map(fn (WebsiteSite $site): array => [
-                'id' => (int) $site->id,
-                'name' => (string) $site->name,
-                'status' => (string) $site->status,
-                'build_method' => (string) ($site->build_method ?? 'scratch'),
-                'updated_at' => $site->updated_at?->format('M d, H:i'),
-            ])->values()->all(),
         ];
     }
 
@@ -226,7 +218,9 @@ class WebsiteOverviewMetrics
     protected static function creditActionsSummary(?Authenticatable $user): array
     {
         $keys = [
+            'website_builder_ai_prompt_suggest' => __('AI prompt suggestion'),
             'website_builder_ai_generate' => __('AI site generation'),
+            'website_builder_ai_image' => __('AI landing images'),
             'website_builder_ai_audit' => __('AI site audit'),
         ];
 
@@ -252,7 +246,12 @@ class WebsiteOverviewMetrics
             if ($planOwner !== null && function_exists('credit_service')) {
                 $cost = max(0, (int) credit_service()->costFor($planOwner, $key));
             } else {
-                $cost = $key === 'website_builder_ai_generate' ? 2 : 1;
+                $cost = match ($key) {
+                    'website_builder_ai_generate' => 2,
+                    'website_builder_ai_prompt_suggest' => 1,
+                    'website_builder_ai_image' => 1,
+                    default => 1,
+                };
             }
 
             $actions[] = [

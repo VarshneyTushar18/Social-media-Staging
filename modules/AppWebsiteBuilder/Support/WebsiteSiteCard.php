@@ -27,28 +27,34 @@ class WebsiteSiteCard
      */
     public static function fromSite(WebsiteSite $site): array
     {
-        $content = is_array($site->generated_content) ? $site->generated_content : [];
+        $raw = is_array($site->generated_content) ? $site->generated_content : [];
+
+        $content = WebsiteLandingAssets::enrich(
+            $raw,
+            (string) ($site->site_type ?? $site->name),
+            (string) ($raw['user_prompt'] ?? ''),
+        );
 
         $previewUrl = trim((string) data_get($content, 'hero_image_url', ''));
         if ($previewUrl === '') {
-            $previewUrl = self::PREVIEW_FALLBACK;
+            $previewUrl = self::previewFallbackForSite($site, $raw);
         }
 
         $accent = WebsiteLandingAssets::sanitizeHexPublic(
-            (string) data_get($content, 'brand_primary', '#5b4dff'),
+            (string) data_get($raw, 'brand_primary', data_get($content, 'brand_primary', '#5b4dff')),
             '#5b4dff'
         );
 
-        $sections = is_array($content['sections'] ?? null) ? $content['sections'] : [];
+        $sections = is_array($raw['sections'] ?? null) ? $raw['sections'] : [];
         $hero = collect($sections)->first(
             fn ($section) => is_array($section) && strtolower((string) data_get($section, 'type')) === 'hero'
         ) ?? [];
 
         $headline = trim((string) data_get($hero, 'headline', ''));
         $subheadline = trim((string) data_get($hero, 'subheadline', ''));
-        $tagline = trim((string) data_get($content, 'tagline', ''));
+        $tagline = trim((string) data_get($raw, 'tagline', ''));
         $siteType = trim((string) ($site->site_type ?? ''));
-        $templateName = trim((string) data_get($content, 'template_name', ''));
+        $templateName = trim((string) data_get($raw, 'template_name', ''));
 
         $summary = $subheadline !== ''
             ? $subheadline
@@ -91,9 +97,30 @@ class WebsiteSiteCard
                     : null),
             'custom_domain' => $site->custom_domain,
             'preview_url' => $previewUrl,
-            'preview_fallback' => self::PREVIEW_FALLBACK,
+            'preview_fallback' => self::previewFallbackForSite($site, $raw),
             'accent' => $accent,
             'updated_label' => $site->updated_at?->diffForHumans() ?? '',
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $raw
+     */
+    protected static function previewFallbackForSite(WebsiteSite $site, array $raw): string
+    {
+        $context = WebsitePromptStockImages::visualContext(
+            $raw,
+            (string) ($site->site_type ?? $site->name),
+            (string) ($raw['user_prompt'] ?? ''),
+        );
+        $heroQuery = (string) ($raw['hero_image_query'] ?? $site->site_type ?? $site->name);
+        $seed = (int) $site->id;
+
+        $url = WebsitePromptStockImages::url($context.' '.$heroQuery, 800, $seed);
+        if ($url !== '') {
+            return $url;
+        }
+
+        return self::PREVIEW_FALLBACK;
     }
 }

@@ -21,19 +21,23 @@ class WebsiteSiteCreator
     {
         $this->ensureTableExists();
 
-        $content = $this->aiGenerator->generate($siteType, [
-            'project_name' => $project?->name,
-            'brand_tone' => $project?->brand_tone,
-            'user_prompt' => (string) ($context['user_prompt'] ?? ''),
-        ]);
-
         $userPrompt = trim((string) ($context['user_prompt'] ?? ''));
         if ($userPrompt === '') {
             throw new RuntimeException(__('A prompt is required to generate a website with AI.'));
         }
 
+        $profile = WebsiteTemplates::inferPromptSiteProfile($userPrompt);
+        $siteType = $profile['label'];
+
+        $content = $this->aiGenerator->generate($siteType, [
+            'user_prompt' => $userPrompt,
+            'prompt_only' => true,
+            'user' => $user,
+        ]);
+
         $content['user_prompt'] = $userPrompt;
         $content['generation_mode'] = 'prompt';
+        $content['site_type'] = $siteType;
 
         return WebsiteSite::query()->create([
             'owner_user_id' => $user->id,

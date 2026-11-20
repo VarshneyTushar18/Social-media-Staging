@@ -120,7 +120,9 @@ class AiReportIndex extends Component
 
         $statusMix = collect(['success', 'failed', 'pending'])
             ->map(function (string $status) use ($logs) {
-                $count = $logs->where('status', $status)->count();
+                $count = $status === 'failed'
+                    ? $logs->filter(fn (AiUsageLog $log) => in_array($log->status, ['failed', 'error'], true))->count()
+                    : $logs->where('status', $status)->count();
 
                 return [
                     'label' => ucfirst($status),
@@ -165,7 +167,7 @@ class AiReportIndex extends Component
             ->values();
 
         $latestFailures = $logs
-            ->where('status', 'failed')
+            ->filter(fn (AiUsageLog $log) => in_array($log->status, ['failed', 'error'], true))
             ->filter(fn (AiUsageLog $log) => filled($log->error_message))
             ->sortByDesc('created_at')
             ->take(6)
@@ -175,7 +177,7 @@ class AiReportIndex extends Component
 
         $totalRequests = $logs->count();
         $successfulRequests = $logs->where('status', 'success')->count();
-        $failedRequests = $logs->where('status', 'failed')->count();
+        $failedRequests = $logs->filter(fn (AiUsageLog $log) => in_array($log->status, ['failed', 'error'], true))->count();
         $latencyLogs = $logs->whereNotNull('latency_ms');
         $activeUsers = $logs->pluck('user_id')->filter()->unique()->count();
         $avgDailyRequests = $daily->avg('requests') ?: 0;
@@ -274,7 +276,7 @@ class AiReportIndex extends Component
                 'avg_daily_requests' => (float) $avgDailyRequests,
             ],
             'summaryCards' => [
-                ['title' => __('Reporting range'), 'description' => $startDate->format('M d').' - '.$endDate->format('M d, Y'), 'variant' => 'info', 'icon' => 'fa-solid fa-calendar-range'],
+                ['title' => __('Reporting range'), 'description' => $startDate->format('M d').' - '.$endDate->format('M d, Y'), 'variant' => 'info', 'icon' => 'fa-solid fa-calendar-days'],
                 ['title' => __('Active users'), 'description' => number_format($activeUsers).' '.__('accounts generated AI traffic'), 'variant' => 'success', 'icon' => 'fa-solid fa-users-viewfinder'],
                 ['title' => __('Average daily requests'), 'description' => number_format((float) $avgDailyRequests, 1).' '.__('requests per day'), 'variant' => 'warning', 'icon' => 'fa-solid fa-chart-line'],
                 ['title' => __('Peak day'), 'description' => (($peakDay['label'] ?? __('N/A')).' - '.number_format((int) ($peakDay['requests'] ?? 0)).' '.__('requests')), 'variant' => 'danger', 'icon' => 'fa-solid fa-bolt'],

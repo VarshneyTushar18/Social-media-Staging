@@ -5,6 +5,16 @@ namespace Modules\AppWebsiteBuilder\Support;
 class WebsiteAiLayout
 {
     /**
+     * Body sections after hero, before footer (fixed display order).
+     *
+     * @return list<string>
+     */
+    public static function canonicalBodySectionOrder(): array
+    {
+        return ['about', 'services', 'highlights', 'faq', 'contact'];
+    }
+
+    /**
      * @return array<string, list<string>>
      */
     public static function allowedVariants(): array
@@ -15,6 +25,7 @@ class WebsiteAiLayout
             'about' => ['split', 'split-reverse', 'stack'],
             'services' => ['image-cards', 'feature-list', 'icon-row', 'product-grid', 'menu-rows'],
             'highlights' => ['icon-cards', 'stat-row', 'list-check'],
+            'faq' => ['accordion', 'simple'],
             'contact' => ['gradient', 'light-split', 'minimal-bar'],
         ];
     }
@@ -57,7 +68,7 @@ class WebsiteAiLayout
             'template_key' => 'ai-prompt',
             'source' => 'ai',
             'from_template' => false,
-            'sections' => ['about', 'services', 'highlights', 'contact'],
+            'sections' => self::canonicalBodySectionOrder(),
             'layout_source' => self::isComplete($layoutFromAi) ? 'ai' : 'inferred',
         ];
 
@@ -82,15 +93,7 @@ class WebsiteAiLayout
             }
         }
 
-        $sections = $layoutFromAi['sections'] ?? null;
-        if (is_array($sections)) {
-            $order = self::sanitizeSectionOrder($sections);
-            if ($order !== null) {
-                $config['sections'] = $order;
-            }
-        } else {
-            $config['sections'] = self::sectionOrderFromPrompt($seed.($promptMode ? '' : '|'.$siteType));
-        }
+        $config['sections'] = self::canonicalBodySectionOrder();
 
         if (self::isComplete($layoutFromAi)) {
             $config['layout_source'] = 'ai';
@@ -163,8 +166,8 @@ class WebsiteAiLayout
         return implode("\n", [
             'This is prompt-only generation — do NOT copy any pre-made website template, template gallery id, or fixed layout preset.',
             'Required "layout" object with ALL keys set from the owner instructions: '.$variants.'.',
-            'layout.sections: array of four keys in display order — about, services, highlights, contact (each once).',
-            'Read the owner prompt carefully: luxury vs playful vs B2B vs restaurant vs shop must change nav, hero, services style, and section order.',
+            'layout.sections: MUST be exactly this order — about, services, highlights, faq, contact (each once).',
+            'Read the owner prompt carefully: luxury vs playful vs B2B vs restaurant vs shop must change nav, hero, services, highlights, and faq styles.',
             'Two different owner prompts MUST produce different layout and theme values. Do not default every shop to center hero + product-grid.',
             WebsiteAiTheme::promptInstructions(),
         ]);
@@ -176,34 +179,16 @@ class WebsiteAiLayout
      */
     protected static function sanitizeSectionOrder(array $sections): ?array
     {
+        $required = self::canonicalBodySectionOrder();
         $order = [];
         foreach ($sections as $section) {
             $section = strtolower(trim((string) $section));
-            if (in_array($section, ['about', 'services', 'highlights', 'contact'], true) && ! in_array($section, $order, true)) {
+            if (in_array($section, $required, true) && ! in_array($section, $order, true)) {
                 $order[] = $section;
             }
         }
 
-        return count($order) === 4 ? $order : null;
-    }
-
-    /**
-     * @return list<string>
-     */
-    protected static function sectionOrderFromPrompt(string $seed): array
-    {
-        $permutations = [
-            ['about', 'services', 'highlights', 'contact'],
-            ['services', 'highlights', 'about', 'contact'],
-            ['services', 'about', 'highlights', 'contact'],
-            ['highlights', 'services', 'about', 'contact'],
-            ['about', 'highlights', 'services', 'contact'],
-            ['services', 'highlights', 'contact', 'about'],
-            ['highlights', 'about', 'services', 'contact'],
-            ['about', 'services', 'contact', 'highlights'],
-        ];
-
-        return $permutations[self::hashIndex($seed.'|sections', count($permutations))];
+        return count($order) === count($required) ? self::canonicalBodySectionOrder() : null;
     }
 
     /**

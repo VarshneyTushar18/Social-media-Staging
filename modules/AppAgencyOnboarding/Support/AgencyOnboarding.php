@@ -606,17 +606,7 @@ class AgencyOnboarding
     {
         $catalogCount = count(AgentCatalog::all());
 
-        if ($user->isSuperAdmin()) {
-            return max(1, $catalogCount);
-        }
-
-        $limit = (int) $user->planLimit('max_agents_per_project', $catalogCount);
-
-        if ($limit < 1) {
-            $limit = 1;
-        }
-
-        return min($limit, max(1, $catalogCount));
+        return max(1, $catalogCount);
     }
 
     /**
@@ -626,11 +616,7 @@ class AgencyOnboarding
      */
     public function agentsSelectableForSetup(User $user): array
     {
-        if (config('modules.appagencyonboarding.offer_all_agents_in_setup', true)) {
-            return array_keys(AgentCatalog::all());
-        }
-
-        return $this->agentsAllowedByPlan($user);
+        return array_keys(AgentCatalog::all());
     }
 
     /**
@@ -660,58 +646,24 @@ class AgencyOnboarding
      */
     public function agentsAllowedByPlan(User $user): array
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->isSuperAdmin() || $user->hasActivePlan()) {
             return array_keys(AgentCatalog::all());
         }
 
-        $permissions = $user->plan?->permissions ?? [];
-        $hasAgentToggles = collect(AgentCatalog::all())
-            ->contains(fn (array $agent): bool => array_key_exists((string) ($agent['plan_feature'] ?? ''), $permissions));
-
-        if (! $hasAgentToggles) {
-            return ['social'];
-        }
-
-        $keys = [];
-
-        foreach (AgentCatalog::all() as $key => $agent) {
-            if ($this->canUseAgent($user, $key)) {
-                $keys[] = $key;
-            }
-        }
-
-        return $keys;
+        return ['social'];
     }
 
     public function canUseAgent(User $user, string $agentKey): bool
     {
-        if ($user->isSuperAdmin()) {
-            return AgentCatalog::get($agentKey) !== null;
-        }
-
-        $agent = AgentCatalog::get($agentKey);
-
-        if ($agent === null) {
+        if (AgentCatalog::get($agentKey) === null) {
             return false;
         }
 
-        $feature = (string) ($agent['plan_feature'] ?? '');
-
-        if ($feature === '') {
+        if ($user->isSuperAdmin()) {
             return true;
         }
 
-        if (! $user->hasActivePlan()) {
-            return false;
-        }
-
-        $permissions = $user->plan?->permissions ?? [];
-
-        if (! array_key_exists($feature, $permissions ?? [])) {
-            return $agentKey === 'social';
-        }
-
-        return $user->hasPlanFeature($feature);
+        return $user->hasActivePlan();
     }
 
     public function launchRoute(User $user, AgencyProject $project): string

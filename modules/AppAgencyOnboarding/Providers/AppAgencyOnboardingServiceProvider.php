@@ -120,7 +120,7 @@ class AppAgencyOnboardingServiceProvider extends ServiceProvider
                     'label' => __('Max agents per project'),
                     'type' => 'number',
                     'default' => 4,
-                    'description' => __('How many agents a project can enable during setup.'),
+                    'description' => __('Display only — all plans can enable every agent.'),
                 ],
             ],
         ]);
@@ -135,7 +135,7 @@ class AppAgencyOnboardingServiceProvider extends ServiceProvider
                 'key' => $permission['key'],
                 'label' => $permission['label'],
                 'type' => 'toggle',
-                'default' => $permission['key'] === 'agent_social',
+                'default' => true,
                 'order' => $permission['order'],
             ]);
         }
