@@ -135,7 +135,7 @@
                         </div>
                     </nav>
 
-                    <div class="hidden items-center gap-2.5 lg:flex">
+                    <div class="guest-marketing-header-actions hidden shrink-0 items-center gap-2 lg:gap-2.5 xl:gap-2.5 lg:flex">
                         @include(theme_view('partials.appearance-toggle', 'guest'))
                         @if ($languages->isNotEmpty())
                             @php
@@ -171,9 +171,9 @@
                         @auth
                             <a href="{{ route('portal.dashboard') }}" class="guest-marketing-action-button guest-marketing-dashboard-button inline-flex h-11 items-center rounded-full border border-white/10 bg-white/[0.03] px-5 text-sm font-medium text-white/78 transition hover:bg-white/8 hover:text-white">{{ __('Dashboard') }}</a>
                         @else
-                            <a href="{{ route('login') }}" class="guest-marketing-action-button inline-flex h-11 items-center rounded-full border border-white/10 bg-white/[0.03] px-5 text-sm font-medium text-white/72 transition hover:bg-white/8 hover:text-white">{{ __('Log in') }}</a>
+                            <a href="{{ route('login') }}" class="guest-marketing-action-button inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.03] px-3.5 text-xs font-medium text-white/72 transition hover:bg-white/8 hover:text-white xl:px-5 xl:text-sm">{{ __('Log in') }}</a>
                             @if ($signupEnabled)
-                                <a href="{{ route('register') }}" class="guest-marketing-action-button inline-flex h-11 items-center rounded-full px-5 text-sm font-semibold text-white shadow-[0_0_28px_rgba(99,102,241,0.32),0_20px_46px_-24px_rgba(34,211,238,0.45)] transition hover:scale-[1.01]" style="background: linear-gradient(135deg, #8b5cf6 0%, #4f46e5 52%, #22d3ee 100%);">{{ __('Get Started Free') }}</a>
+                                <a href="{{ route('register') }}" class="guest-marketing-signup-cta guest-marketing-action-button inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3.5 text-xs font-semibold text-white shadow-[0_0_28px_rgba(99,102,241,0.32),0_20px_46px_-24px_rgba(34,211,238,0.45)] transition hover:scale-[1.01] xl:px-5 xl:text-sm" style="background: linear-gradient(135deg, #8b5cf6 0%, #4f46e5 52%, #22d3ee 100%);">{{ __('Get Started Free') }}</a>
                             @endif
                         @endauth
                     </div>

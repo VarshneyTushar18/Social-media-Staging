@@ -184,6 +184,19 @@
         }
     }
 
+    @media (min-width: 1024px) and (max-width: 1279px) {
+        .guest-marketing-header-nav a {
+            padding-inline: 0.625rem;
+            font-size: 0.8125rem;
+        }
+
+    }
+
+    .guest-marketing-signup-cta {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
     .guest-section-space {
         padding-top: var(--theme-section-spacing);
         padding-bottom: var(--theme-section-spacing);

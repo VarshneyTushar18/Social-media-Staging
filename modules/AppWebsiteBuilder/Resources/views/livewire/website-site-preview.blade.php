@@ -46,19 +46,7 @@
                 </div>
             </div>
 
-            <div class="flex flex-col items-end gap-2 text-right md:justify-self-end">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.22em]" style="color: var(--theme-accent);">
-                    @if ($codeMode)
-                        {{ __('Website code') }}
-                    @elseif ($editMode)
-                        {{ __('Edit content') }}
-                    @else
-                        {{ __('Responsive preview') }}
-                    @endif
-                </p>
-                <h1 class="mt-1 truncate text-base font-semibold sm:text-lg" style="color: var(--theme-header-text-color);">
-                    {{ $editMode ? $siteName : $site->name }}
-                </h1>
+            <div class="flex items-center justify-end md:justify-self-end">
                 <div
                     class="inline-flex rounded-[var(--theme-input-radius,0.75rem)] border p-0.5 shadow-sm"
                     style="border-color: rgba(var(--theme-border-color-rgb), 0.65); background: var(--theme-surface-overlay);"
@@ -188,16 +176,6 @@
                 </x-ui.card>
             @endif
         </div>
-
-        <p class="mt-4 text-center text-xs" style="color: var(--theme-muted-text-color);">
-            @if ($codeMode)
-                {{ __('Download index.html, then upload it to any web host.') }}
-            @elseif ($editMode)
-                {{ __('Edit mode: save when you are happy with the copy, then switch back to Preview.') }}
-            @else
-                {{ __('Scroll inside the frame to review each section on laptop, tablet, and mobile.') }}
-            @endif
-        </p>
     </div>
 
     <style>
