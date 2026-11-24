@@ -33,7 +33,7 @@
                 ])>{{ $link['label'] }}</a>
             @endforeach
             <a href="#contact" class="inline-flex rounded-full px-4 py-2 text-xs font-semibold text-white shadow-sm" style="background: {{ $brand }};">
-                {{ $heroCta }}
+                {{ $navCta ?? $heroCta }}
             </a>
         </div>
 
@@ -69,7 +69,7 @@
                 style="background: {{ $brand }};"
                 x-on:click="mobileNav = false"
             >
-                {{ $heroCta }}
+                {{ $navCta ?? $heroCta }}
             </a>
         </div>
     </div>

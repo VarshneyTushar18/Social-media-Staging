@@ -20,7 +20,7 @@ class OnboardingPlan extends Component
         $user = auth()->user();
         $onboarding = app(AgencyOnboarding::class);
 
-        if ($user && $onboarding->hasChosenOnboardingPlan($user)) {
+        if ($user && ($onboarding->isAddingAdditionalProject() || $onboarding->hasChosenOnboardingPlan($user))) {
             $this->redirectRoute('portal.onboarding.project', navigate: false);
 
             return;

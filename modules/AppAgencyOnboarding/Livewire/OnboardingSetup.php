@@ -23,7 +23,7 @@ class OnboardingSetup extends Component
     public string $brand_tone = 'friendly';
 
     /** @var array<int, string> */
-    public array $selectedAgents = ['social'];
+    public array $selectedAgents = [];
 
     public ?AgencyProject $setupProject = null;
 
@@ -53,11 +53,7 @@ class OnboardingSetup extends Component
         $this->target_audience = (string) ($project->target_audience ?? '');
         $this->monthly_budget = (string) ($project->monthly_budget ?? '1k_5k');
         $this->brand_tone = (string) ($project->brand_tone ?? 'friendly');
-        $this->selectedAgents = array_values(array_filter((array) ($project->enabled_agents ?? ['social'])));
-
-        if ($this->selectedAgents === []) {
-            $this->selectedAgents = ['social'];
-        }
+        $this->selectedAgents = $onboarding->resolveSetupSelectedAgents($project);
 
         if (old('goals') !== null || old('target_audience') !== null || old('monthly_budget') !== null) {
             $this->goals = (string) old('goals', $this->goals);
@@ -78,8 +74,13 @@ class OnboardingSetup extends Component
         $user = auth()->user();
         $project = $this->setupProject ?? $onboarding->resolveSetupProject($user);
 
+        $stepper = $user !== null
+            ? $onboarding->stepperForPage($user, 'setup')
+            : ['variant' => 'full', 'current' => 3];
+
         return view('appagencyonboarding::livewire.onboarding-setup', [
-            'currentStep' => 3,
+            'currentStep' => $stepper['current'],
+            'stepperVariant' => $stepper['variant'],
             'project' => $project,
             'agents' => AgentCatalog::all(),
             'allowedAgents' => $onboarding->agentsSelectableForSetup($user),

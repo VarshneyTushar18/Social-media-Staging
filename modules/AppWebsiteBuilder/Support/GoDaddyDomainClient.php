@@ -312,7 +312,8 @@ class GoDaddyDomainClient
     {
         $message = match ($response->status()) {
             401, 403 => __('GoDaddy API rejected the credentials. Check Settings → Domain registrars.'),
-        }
+            default => __('GoDaddy request failed (HTTP :status).', ['status' => $response->status()]),
+        };
 
         throw new \RuntimeException($message);
     }

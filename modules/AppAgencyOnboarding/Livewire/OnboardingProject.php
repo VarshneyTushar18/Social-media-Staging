@@ -55,17 +55,29 @@ class OnboardingProject extends Component
 
     public function back(): mixed
     {
-        return $this->redirectRoute('portal.onboarding.plan', navigate: false);
+        $user = auth()->user();
+        $onboarding = app(AgencyOnboarding::class);
+
+        abort_unless($user !== null, 403);
+
+        return $this->redirect($onboarding->projectStepBackUrl($user), navigate: false);
     }
 
     public function render(): View
     {
         $industries = config('modules.appagencyonboarding.industry_options', []);
+        $user = auth()->user();
+        $onboarding = app(AgencyOnboarding::class);
+        $stepper = $user !== null
+            ? $onboarding->stepperForPage($user, 'project')
+            : ['variant' => 'full', 'current' => 2];
 
         return view('appagencyonboarding::livewire.onboarding-project', [
-            'currentStep' => 2,
+            'currentStep' => $stepper['current'],
+            'stepperVariant' => $stepper['variant'],
+            'projectStepBackUrl' => $user !== null ? $onboarding->projectStepBackUrl($user) : route('portal.onboarding.plan'),
             'industries' => $industries,
-            'planName' => auth()->user()?->plan?->name ?? __('No plan'),
+            'planName' => $user?->plan?->name ?? __('No plan'),
         ]);
     }
 }

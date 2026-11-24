@@ -1,11 +1,16 @@
-@props(['current' => 1])
+@props(['current' => 1, 'variant' => 'full'])
 
 @php
-    $steps = [
-        1 => __('Plan'),
-        2 => __('Project'),
-        3 => __('Setup'),
-    ];
+    $steps = $variant === 'additional'
+        ? [
+            1 => __('Project'),
+            2 => __('Setup'),
+        ]
+        : [
+            1 => __('Plan'),
+            2 => __('Project'),
+            3 => __('Setup'),
+        ];
 @endphp
 
 <nav class="mb-8 flex flex-wrap items-center justify-center gap-2 sm:gap-3" aria-label="{{ __('Onboarding progress') }}">

@@ -1,11 +1,12 @@
 @php
+    $allAgentKeys = array_keys($agents);
     $selectedList = old('selected_agents', $selectedAgents);
     if (! is_array($selectedList)) {
-        $selectedList = ['social'];
+        $selectedList = $allAgentKeys;
     }
     $selectedList = array_values(array_unique(array_filter($selectedList)));
     if ($selectedList === []) {
-        $selectedList = ['social'];
+        $selectedList = $allAgentKeys;
     }
     $selectedCount = count($selectedList);
 @endphp
@@ -44,7 +45,7 @@
         },
     }"
 >
-    @include('appagencyonboarding::partials.stepper', ['current' => $currentStep])
+    @include('appagencyonboarding::partials.stepper', ['current' => $currentStep, 'variant' => $stepperVariant ?? 'full'])
 
     <section
         class="overflow-hidden rounded-[1.75rem] border"
@@ -174,7 +175,7 @@
                 <p class="mt-3 text-sm font-medium" style="color: var(--theme-danger-color);">{{ $message }}</p>
             @enderror
 
-            <p class="mt-2 text-xs" style="color: var(--theme-muted-text-color);">{{ __('Click a card to select or deselect. Every plan includes all agents.') }}</p>
+            <p class="mt-2 text-xs" style="color: var(--theme-muted-text-color);">{{ __('All agents are selected by default. Deselect any you do not want on this project dashboard.') }}</p>
 
             <template x-for="key in selected" :key="key">
                 <input type="hidden" name="selected_agents[]" :value="key">

@@ -9,6 +9,7 @@ use Modules\AppWebsiteBuilder\Http\Middleware\ServePublishedWebsiteByCustomDomai
 use Modules\AppWebsiteBuilder\Support\WebsiteAiGenerator;
 use Modules\AppWebsiteBuilder\Support\WebsitePromptSuggester;
 use Modules\AppWebsiteBuilder\Support\WebsiteAuditService;
+use Modules\AppWebsiteBuilder\Support\WebsiteTechnicalAudit;
 use Modules\AppWebsiteBuilder\Support\WebsiteExternalPageSnapshot;
 use Modules\AppWebsiteBuilder\Support\WebsiteOverviewMetrics;
 use Modules\AppWebsiteBuilder\Support\WebsiteSiteCreator;
@@ -20,6 +21,7 @@ class AppWebsiteBuilderServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'modules.appwebsitebuilder');
         $this->app->singleton(WebsiteAiGenerator::class);
         $this->app->singleton(WebsitePromptSuggester::class);
+        $this->app->singleton(WebsiteTechnicalAudit::class);
         $this->app->singleton(WebsiteAuditService::class);
         $this->app->singleton(WebsiteExternalPageSnapshot::class);
         $this->app->singleton(WebsiteSiteCreator::class);

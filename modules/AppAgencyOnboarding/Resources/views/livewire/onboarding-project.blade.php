@@ -7,7 +7,7 @@
         industryLabels: @js($industries),
     }"
 >
-    @include('appagencyonboarding::partials.stepper', ['current' => $currentStep])
+    @include('appagencyonboarding::partials.stepper', ['current' => $currentStep, 'variant' => $stepperVariant ?? 'full'])
 
     <section
         class="overflow-hidden rounded-[1.75rem] border"
@@ -47,7 +47,27 @@
 
     <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.38fr)] lg:items-start">
         <x-ui.card class="p-5 sm:p-7">
-            <form action="{{ route('portal.onboarding.project.store') }}" method="post" class="space-y-5">
+            <form
+                action="{{ route('portal.onboarding.project.store') }}"
+                method="post"
+                class="space-y-5"
+                novalidate
+                x-data="{
+                    nameError: @js($errors->first('name')),
+                    requiredMessage: @js(__('This field is required.')),
+                    validateName() {
+                        const value = (this.$refs.projectName?.value ?? '').trim();
+                        if (value === '') {
+                            this.nameError = this.requiredMessage;
+                            this.$refs.projectName?.focus();
+                            return false;
+                        }
+                        this.nameError = '';
+                        return true;
+                    },
+                }"
+                x-on:submit="if (! validateName()) { $event.preventDefault(); }"
+            >
                 @csrf
                 @if ($errors->any())
                     <div class="rounded-xl border px-4 py-3 text-sm" style="border-color: rgba(var(--theme-danger-color-rgb, 239, 68, 68), 0.35); color: var(--theme-danger-color);">
@@ -61,16 +81,21 @@
                         id="project-name"
                         name="name"
                         type="text"
+                        x-ref="projectName"
                         value="{{ old('name', $name) }}"
-                        required
-                        x-on:input="previewName = $event.target.value"
+                        x-on:input="previewName = $event.target.value; if (($event.target.value ?? '').trim() !== '') { nameError = ''; }"
                         autocomplete="organization"
+                        @if ($errors->has('name')) aria-invalid="true" @endif
                         class="flex h-11 w-full border px-4 text-sm font-medium shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 focus:border-[var(--theme-accent)] focus:ring-4 focus:ring-[color:rgba(var(--theme-accent-rgb),0.10)]"
-                        style="border-radius: var(--theme-input-radius, 0.75rem); border-color: var(--theme-border-color); background-color: var(--theme-input-surface); color: var(--theme-input-text);"
+                        style="border-radius: var(--theme-input-radius, 0.75rem); border-color: @if ($errors->has('name')) rgba(var(--theme-danger-color-rgb, 239, 68, 68), 0.55) @else var(--theme-border-color) @endif; background-color: var(--theme-input-surface); color: var(--theme-input-text);"
                     />
-                    @error('name')
-                        <p class="text-sm font-medium" style="color: var(--theme-danger-color);">{{ $message }}</p>
-                    @enderror
+                    <p
+                        x-show="nameError"
+                        x-cloak
+                        x-text="nameError"
+                        class="text-sm font-medium"
+                        style="color: var(--theme-danger-color);"
+                    ></p>
                 </div>
 
                 <div class="space-y-2.5">
@@ -106,6 +131,9 @@
                             <i class="fa-solid fa-chevron-down text-xs"></i>
                         </span>
                     </div>
+                    @error('industry')
+                        <p class="text-sm font-medium" style="color: var(--theme-danger-color);">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div
@@ -113,9 +141,8 @@
                     style="border-color: rgba(var(--theme-border-color-rgb), 0.45);"
                 >
                     <x-ui.button
-                        type="button"
                         variant="outline"
-                        x-on:click.stop="window.location.href = @js(route('portal.onboarding.plan'))"
+                        href="{{ $projectStepBackUrl }}"
                     >
                         <i class="fa-solid fa-arrow-left text-xs"></i>
                         {{ __('Back') }}

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\AppAgencyOnboarding\Http\Controllers\OnboardingHomeController;
 use Modules\AppAgencyOnboarding\Http\Controllers\StoreOnboardingPlanController;
 use Modules\AppAgencyOnboarding\Http\Controllers\StoreOnboardingProjectController;
+use Modules\AppAgencyOnboarding\Http\Controllers\CancelAdditionalProjectController;
 use Modules\AppAgencyOnboarding\Http\Controllers\StartAgencyProjectController;
 use Modules\AppAgencyOnboarding\Http\Controllers\StoreOnboardingSetupController;
 use Modules\AppAgencyOnboarding\Http\Controllers\SwitchAgencyProjectController;
@@ -27,4 +28,5 @@ Route::middleware(['web', 'auth'])->group(function (): void {
 
     Route::post('portal/projects/switch', SwitchAgencyProjectController::class)->name('portal.projects.switch');
     Route::get('portal/projects/new', StartAgencyProjectController::class)->name('portal.projects.create');
+    Route::get('portal/projects/new/cancel', CancelAdditionalProjectController::class)->name('portal.projects.create.cancel');
 });

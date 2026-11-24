@@ -57,11 +57,15 @@
             this.subdomainSlug = '';
         },
         confirmPublishSubdomain() {
-            if (! this.subdomainSlug) {
+            const slug = (this.subdomainSlug || '').trim();
+            if (slug.length < 3) {
+                return;
+            }
+            if (! this.publishSiteId) {
                 return;
             }
 
-            $wire.publishSubdomain(this.publishSiteId, this.subdomainSlug).then(() => this.closePublishSite());
+            $wire.publishSubdomain(this.publishSiteId, slug);
         },
         confirmCustomDomain() {
             if (! this.selectedProviderKey) {
@@ -391,7 +395,7 @@
                                     type="button"
                                     x-show="publishStep === 'subdomain'"
                                     x-cloak
-                                    x-bind:disabled="! subdomainSlug"
+                                    x-bind:disabled="(subdomainSlug || '').trim().length < 3"
                                     wire:loading.attr="disabled"
                                     wire:target="publishSubdomain"
                                     x-on:click="confirmPublishSubdomain()"

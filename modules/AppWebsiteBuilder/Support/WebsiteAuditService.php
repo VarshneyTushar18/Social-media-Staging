@@ -13,6 +13,7 @@ class WebsiteAuditService
     public function __construct(
         protected OptionStore $options,
         protected WebsiteExternalPageSnapshot $snapshots,
+        protected WebsiteTechnicalAudit $technicalAudit,
     ) {}
 
     /**
@@ -29,20 +30,29 @@ class WebsiteAuditService
     public function auditBuilderSite(WebsiteSite $site): array
     {
         $context = WebsiteAuditContext::fromBuilderSite($site);
+        $builderSummary = json_decode($context['payload'], true);
+        $builderSummary = is_array($builderSummary) ? $builderSummary : [];
 
         $slug = (string) ($site->subdomain_slug ?? '');
         $publicUrl = $slug !== '' ? WebsitePublishConfig::publicUrl($slug) : null;
 
+        $snapshot = null;
+
         if ($site->status === WebsiteSite::STATUS_PUBLISHED && filled($publicUrl)) {
             try {
                 $snapshot = $this->snapshots->fetch($publicUrl);
-                $context['payload'] .= "\n\n--- LIVE PAGE SNAPSHOT ---\n".json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             } catch (Throwable) {
-                /* builder JSON is enough */
+                $snapshot = null;
             }
         }
 
-        return $this->analyze($context);
+        return $this->analyzeForTarget(
+            $context,
+            $snapshot,
+            $builderSummary,
+            (string) $context['label'],
+            'builder',
+        );
     }
 
     /**
@@ -61,7 +71,13 @@ class WebsiteAuditService
         $snapshot = $this->snapshots->fetch($url);
         $context = WebsiteAuditContext::fromExternalSnapshot($snapshot);
 
-        return $this->analyze($context);
+        return $this->analyzeForTarget(
+            $context,
+            $snapshot,
+            null,
+            (string) ($snapshot['url'] ?? $url),
+            'external',
+        );
     }
 
     /**
@@ -76,30 +92,42 @@ class WebsiteAuditService
      *     used_ai: bool
      * }
      */
-    protected function analyze(array $context): array
-    {
+    /**
+     * @param  array{source: string, label: string, payload: string}  $context
+     * @param  array<string, mixed>|null  $snapshot
+     * @param  array<string, mixed>|null  $builderSummary
+     */
+    protected function analyzeForTarget(
+        array $context,
+        ?array $snapshot,
+        ?array $builderSummary,
+        string $targetLabel,
+        string $source,
+    ): array {
         $aiEnabled = (string) $this->options->get('ai_content_status', '1') === '1'
             && trim((string) $this->options->get('ai_openai_api_key', '')) !== '';
 
+        $result = $snapshot !== null
+            ? $this->technicalAudit->auditLivePage($snapshot, $builderSummary)
+            : $this->technicalAudit->auditBuilderContent($builderSummary ?? []);
+
         if ($aiEnabled) {
             try {
-                $result = $this->analyzeWithAi($context);
+                $result = $this->analyzeWithAi($context, $result);
 
                 return array_merge($result, [
-                    'target_label' => $context['label'],
-                    'source' => $context['source'],
+                    'target_label' => $targetLabel,
+                    'source' => $source,
                     'used_ai' => true,
                 ]);
             } catch (Throwable) {
-                /* fall through to rules */
+                /* use technical result below */
             }
         }
 
-        $result = $this->analyzeWithRules($context);
-
         return array_merge($result, [
-            'target_label' => $context['label'],
-            'source' => $context['source'],
+            'target_label' => $targetLabel,
+            'source' => $source,
             'used_ai' => false,
         ]);
     }
@@ -108,7 +136,16 @@ class WebsiteAuditService
      * @param  array{source: string, label: string, payload: string}  $context
      * @return array{score: int, summary: string, strengths: list<string>, fixes: list<array{area: string, issue: string, recommendation: string}>}
      */
-    protected function analyzeWithAi(array $context): array
+    /**
+     * @param  array{source: string, label: string, payload: string}  $context
+     * @param  array<string, mixed>|null  $snapshot
+     * @param  array<string, mixed>|null  $builderSummary
+     */
+    /**
+     * @param  array{source: string, label: string, payload: string}  $context
+     * @param  array{score: int, summary: string, strengths: list<string>, fixes: list<array{area: string, issue: string, recommendation: string}>, metrics?: array<string, mixed>}  $technical
+     */
+    protected function analyzeWithAi(array $context, array $technical): array
     {
         $provider = (string) $this->options->get('ai_content_provider', 'openai');
 
@@ -121,12 +158,27 @@ class WebsiteAuditService
         $baseUrl = rtrim((string) $this->options->get('ai_openai_url', 'https://api.openai.com/v1'), '/');
         $startedAt = microtime(true);
 
+        $areas = implode(', ', [
+            'Website Performance Audit',
+            'Mobile Responsiveness Audit',
+            'Broken Links Detection',
+            'Image Loading Check',
+            'Page Design & Layout Audit',
+            'Forms and Button Functionality Check',
+            'Page Loading Speed',
+            'HTTPS / SSL Check',
+            'Accessibility Audit',
+            'Technical Error Detection',
+        ]);
+
         $userPrompt = implode("\n", [
-            'Audit this website for a small-business owner.',
-            'Source type: '.$context['source'].'.',
+            'Website Health & Quality audit for a small-business owner.',
+            'Only evaluate these areas (no other categories): '.$areas.'.',
+            'Use the automated metrics below as ground truth; refine score, strengths, and fixes.',
             'Return JSON only with keys: score (0-100 integer), summary (string), strengths (array of short strings), fixes (array of objects with area, issue, recommendation).',
-            'areas for fixes: Publishing, Content, SEO, Design & UX, Trust & contact.',
-            'Be specific to the data below. strengths = what is already good; fixes = what should be corrected.',
+            'area must be one of the ten audit names above.',
+            'Automated metrics:',
+            json_encode($technical['metrics'] ?? [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
             'Website data:',
             $context['payload'],
         ]);
@@ -148,7 +200,10 @@ class WebsiteAuditService
                 ]);
             }
 
-            return $this->normalizeResult($decoded);
+            $normalized = $this->normalizeResult($decoded);
+            $normalized['metrics'] = is_array($technical['metrics'] ?? null) ? $technical['metrics'] : [];
+
+            return $normalized;
         } catch (Throwable $exception) {
             if (function_exists('log_ai_usage')) {
                 log_ai_usage([
@@ -204,127 +259,14 @@ class WebsiteAuditService
             ->values()
             ->all();
 
+        $metrics = is_array($decoded['metrics'] ?? null) ? $decoded['metrics'] : [];
+
         return [
             'score' => max(0, min(100, (int) ($decoded['score'] ?? 0))),
             'summary' => trim((string) ($decoded['summary'] ?? '')),
             'strengths' => $strengths,
             'fixes' => $fixes,
-        ];
-    }
-
-    /**
-     * @param  array{source: string, label: string, payload: string}  $context
-     * @return array{score: int, summary: string, strengths: list<string>, fixes: list<array{area: string, issue: string, recommendation: string}>}
-     */
-    protected function analyzeWithRules(array $context): array
-    {
-        $data = json_decode($context['payload'], true);
-        $strengths = [];
-        $fixes = [];
-        $score = 70;
-
-        if ($context['source'] === 'builder' && is_array($data)) {
-            if (($data['status'] ?? '') === WebsiteSite::STATUS_PUBLISHED && filled($data['public_url'] ?? null)) {
-                $strengths[] = __('Site is published with a public URL.');
-            } else {
-                $fixes[] = [
-                    'area' => __('Publishing'),
-                    'issue' => __('Site is not published yet.'),
-                    'recommendation' => __('Publish with a platform subdomain from the dashboard.'),
-                ];
-                $score -= 15;
-            }
-
-            $sections = is_array($data['sections'] ?? null) ? $data['sections'] : [];
-            if (count($sections) >= 3) {
-                $strengths[] = __('Landing page has multiple content sections.');
-            } else {
-                $fixes[] = [
-                    'area' => __('Content'),
-                    'issue' => __('Few content sections on the page.'),
-                    'recommendation' => __('Add hero, services, and contact sections in the site editor.'),
-                ];
-                $score -= 10;
-            }
-
-            $hero = collect($sections)->first(fn ($s) => is_array($s) && strtolower((string) data_get($s, 'type')) === 'hero');
-            if (is_array($hero) && strlen(trim((string) data_get($hero, 'headline', ''))) >= 10) {
-                $strengths[] = __('Hero headline is present.');
-            } else {
-                $fixes[] = [
-                    'area' => __('Content'),
-                    'issue' => __('Hero headline is missing or too short.'),
-                    'recommendation' => __('Write a clear headline in the hero section.'),
-                ];
-                $score -= 10;
-            }
-
-            $contact = collect($sections)->first(fn ($s) => is_array($s) && strtolower((string) data_get($s, 'type')) === 'contact');
-            if (is_array($contact)) {
-                $strengths[] = __('Contact section is included.');
-            } else {
-                $fixes[] = [
-                    'area' => __('Trust & contact'),
-                    'issue' => __('No contact section.'),
-                    'recommendation' => __('Add email or phone details so visitors can reach you.'),
-                ];
-                $score -= 10;
-            }
-        }
-
-        if ($context['source'] === 'external' && is_array($data)) {
-            if ((int) ($data['status'] ?? 0) === 200) {
-                $strengths[] = __('Page responds with HTTP 200.');
-            } else {
-                $fixes[] = [
-                    'area' => __('Publishing'),
-                    'issue' => __('Page did not return HTTP 200.'),
-                    'recommendation' => __('Check hosting and DNS for this URL.'),
-                ];
-                $score -= 20;
-            }
-
-            if (($data['https'] ?? false) === true) {
-                $strengths[] = __('Site uses HTTPS.');
-            } else {
-                $fixes[] = [
-                    'area' => __('Publishing'),
-                    'issue' => __('Site is not using HTTPS.'),
-                    'recommendation' => __('Enable SSL on your domain.'),
-                ];
-                $score -= 10;
-            }
-
-            if (strlen((string) ($data['title'] ?? '')) >= 10) {
-                $strengths[] = __('HTML title tag is set.');
-            } else {
-                $fixes[] = [
-                    'area' => __('SEO'),
-                    'issue' => __('Title tag is missing or too short.'),
-                    'recommendation' => __('Add a descriptive <title> in the page head.'),
-                ];
-                $score -= 10;
-            }
-
-            if (strlen((string) ($data['h1'] ?? '')) >= 5) {
-                $strengths[] = __('Primary H1 heading found.');
-            } else {
-                $fixes[] = [
-                    'area' => __('SEO'),
-                    'issue' => __('No clear H1 heading.'),
-                    'recommendation' => __('Use one main H1 that describes the page.'),
-                ];
-                $score -= 10;
-            }
-        }
-
-        $score = max(0, min(100, $score));
-
-        return [
-            'score' => $score,
-            'summary' => __('Automated checklist — enable OpenAI under Admin → AI Settings for a deeper AI review.'),
-            'strengths' => $strengths,
-            'fixes' => $fixes,
+            'metrics' => $metrics,
         ];
     }
 
@@ -337,7 +279,7 @@ class WebsiteAuditService
             ? (realpath(storage_path('ssl/cacert.pem')) ?: storage_path('ssl/cacert.pem'))
             : true;
 
-        $response = Http::timeout(90)
+        $response = Http::timeout(45)
             ->withOptions(['verify' => $verify])
             ->withToken($apiKey)
             ->acceptJson()

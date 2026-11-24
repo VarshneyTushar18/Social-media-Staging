@@ -42,7 +42,18 @@ class WebsiteExternalPageSnapshot
     }
 
     /**
-     * @return array{url: string, status: int, title: string, meta_description: string, h1: string, excerpt: string, https: bool}
+     * @return array{
+     *     url: string,
+     *     status: int,
+     *     title: string,
+     *     meta_description: string,
+     *     h1: string,
+     *     excerpt: string,
+     *     https: bool,
+     *     html: string,
+     *     html_bytes: int,
+     *     response_time_ms: int
+     * }
      */
     public function fetch(string $url): array
     {
@@ -52,7 +63,9 @@ class WebsiteExternalPageSnapshot
             ? (realpath(storage_path('ssl/cacert.pem')) ?: storage_path('ssl/cacert.pem'))
             : true;
 
-        $response = Http::timeout(15)
+        $startedAt = microtime(true);
+
+        $response = Http::timeout(10)
             ->withOptions(['verify' => $verify, 'allow_redirects' => ['max' => 5]])
             ->withHeaders([
                 'User-Agent' => 'Stackposts-WebsiteAudit/1.0',
@@ -60,8 +73,11 @@ class WebsiteExternalPageSnapshot
             ])
             ->get($safeUrl);
 
+        $responseTimeMs = (int) round((microtime(true) - $startedAt) * 1000);
+
         $status = $response->status();
         $body = (string) $response->body();
+        $htmlBytes = strlen($body);
         $body = Str::limit($body, 200000, '');
 
         $title = $this->matchTag($body, 'title');
@@ -77,6 +93,9 @@ class WebsiteExternalPageSnapshot
             'h1' => $h1,
             'excerpt' => Str::limit($text, 4000, '…'),
             'https' => Str::startsWith(strtolower($safeUrl), 'https://'),
+            'html' => $body,
+            'html_bytes' => $htmlBytes,
+            'response_time_ms' => $responseTimeMs,
         ];
     }
 

@@ -173,6 +173,10 @@ class WebsiteAudit extends Component
             && trim((string) $options->get('ai_openai_api_key', '')) !== '';
 
         try {
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(90);
+            }
+
             if ($aiEnabled && function_exists('credit_service')) {
                 credit_service()->ensureCanConsume($user, $actionKey);
             }

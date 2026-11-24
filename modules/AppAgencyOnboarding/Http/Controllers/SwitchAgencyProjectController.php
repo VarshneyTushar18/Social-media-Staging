@@ -13,7 +13,7 @@ class SwitchAgencyProjectController
     {
         $user = $request->user();
 
-        abort_unless($user !== null && $onboarding->isComplete($user), 403);
+        abort_unless($user !== null && $onboarding->canSwitchBetweenProjects($user), 403);
 
         $projectId = (int) $request->input('project_id');
 
@@ -23,10 +23,23 @@ class SwitchAgencyProjectController
             ->whereKey($projectId)
             ->firstOrFail();
 
-        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'active_agency_project_id')) {
-            $user->forceFill(['active_agency_project_id' => $project->id])->save();
+        $user->forceFill(['active_agency_project_id' => $project->id])->save();
+
+        session()->forget([
+            'agency_onboarding_project_ready',
+            'agency_onboarding_project_draft',
+            'agency_onboarding_active_project_id',
+        ]);
+
+        $user = $user->fresh();
+
+        $previous = (string) url()->previous();
+        $previousPath = (string) parse_url($previous, PHP_URL_PATH);
+
+        if ($previous !== '' && str_contains($previousPath, '/portal')) {
+            return redirect()->to($previous);
         }
 
-        return redirect()->to($onboarding->postAuthRedirectPath($user->fresh()));
+        return redirect()->to($onboarding->portalHomeRedirectPath($user));
     }
 }

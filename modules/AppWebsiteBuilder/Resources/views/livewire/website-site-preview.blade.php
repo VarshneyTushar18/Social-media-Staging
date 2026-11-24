@@ -1,10 +1,23 @@
 <div
-    class="min-h-[70vh] py-6 sm:py-8"
+    @class([
+        'flex min-h-0 flex-col',
+        'min-h-[calc(100dvh-5rem)] py-4 sm:py-5' => $codeMode,
+        'min-h-[70vh] py-6 sm:py-8' => ! $codeMode,
+    ])
     x-data="{ device: 'laptop' }"
 >
     @include('appwebsitebuilder::partials.website-builder-session-toasts')
-    <div class="mx-auto max-w-[1400px] px-4 sm:px-6">
-        <div class="mb-5 grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
+    <div @class([
+        'mx-auto w-full max-w-[1400px] px-4 sm:px-6',
+        'flex min-h-0 flex-1 flex-col' => $codeMode,
+    ])>
+        <div @class([
+            'grid grid-cols-1 items-center gap-4',
+            'md:grid-cols-[1fr_auto_1fr]' => ! $codeMode,
+            'md:grid-cols-[1fr_auto]' => $codeMode,
+            'mb-3 shrink-0' => $codeMode,
+            'mb-5' => ! $codeMode,
+        ])>
             <div class="flex justify-start">
                 <x-ui.button
                     href="{{ route('portal.agents.website.dashboard') }}"
@@ -17,36 +30,41 @@
                 </x-ui.button>
             </div>
 
-            <div class="flex justify-center">
-                <div
-                    class="inline-flex rounded-[var(--theme-input-radius,0.75rem)] border p-1 shadow-sm"
-                    style="border-color: rgba(var(--theme-border-color-rgb), 0.65); background: var(--theme-surface-overlay);"
-                    role="tablist"
-                    aria-label="{{ __('Device preview') }}"
-                >
-                    @foreach ([
-                        ['id' => 'laptop', 'icon' => 'fa-laptop', 'label' => __('Laptop')],
-                        ['id' => 'tablet', 'icon' => 'fa-tablet-screen-button', 'label' => __('Tablet')],
-                        ['id' => 'mobile', 'icon' => 'fa-mobile-screen', 'label' => __('Mobile')],
-                    ] as $deviceOption)
-                        <button
-                            type="button"
-                            role="tab"
-                            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition"
-                            x-bind:aria-selected="device === @js($deviceOption['id'])"
-                            x-on:click="device = @js($deviceOption['id'])"
-                            x-bind:style="device === @js($deviceOption['id'])
-                                ? 'background-color: var(--theme-accent); color: #fff;'
-                                : 'color: var(--theme-header-text-color);'"
-                        >
-                            <i class="fa-solid {{ $deviceOption['icon'] }}"></i>
-                            <span class="hidden sm:inline">{{ $deviceOption['label'] }}</span>
-                        </button>
-                    @endforeach
+            @unless ($codeMode)
+                <div class="flex justify-center">
+                    <div
+                        class="inline-flex rounded-[var(--theme-input-radius,0.75rem)] border p-1 shadow-sm"
+                        style="border-color: rgba(var(--theme-border-color-rgb), 0.65); background: var(--theme-surface-overlay);"
+                        role="tablist"
+                        aria-label="{{ __('Device preview') }}"
+                    >
+                        @foreach ([
+                            ['id' => 'laptop', 'icon' => 'fa-laptop', 'label' => __('Laptop')],
+                            ['id' => 'tablet', 'icon' => 'fa-tablet-screen-button', 'label' => __('Tablet')],
+                            ['id' => 'mobile', 'icon' => 'fa-mobile-screen', 'label' => __('Mobile')],
+                        ] as $deviceOption)
+                            <button
+                                type="button"
+                                role="tab"
+                                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition"
+                                x-bind:aria-selected="device === @js($deviceOption['id'])"
+                                x-on:click="device = @js($deviceOption['id'])"
+                                x-bind:style="device === @js($deviceOption['id'])
+                                    ? 'background-color: var(--theme-accent); color: #fff;'
+                                    : 'color: var(--theme-header-text-color);'"
+                            >
+                                <i class="fa-solid {{ $deviceOption['icon'] }}"></i>
+                                <span class="hidden sm:inline">{{ $deviceOption['label'] }}</span>
+                            </button>
+                        @endforeach
+                    </div>
                 </div>
-            </div>
+            @endunless
 
-            <div class="flex items-center justify-end md:justify-self-end">
+            <div @class([
+                'flex items-center justify-end md:justify-self-end',
+                'md:col-start-2' => $codeMode,
+            ])>
                 <div
                     class="inline-flex rounded-[var(--theme-input-radius,0.75rem)] border p-0.5 shadow-sm"
                     style="border-color: rgba(var(--theme-border-color-rgb), 0.65); background: var(--theme-surface-overlay);"
@@ -54,24 +72,15 @@
                     <button
                         type="button"
                         class="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-                        wire:click="setEditMode(false)"
-                        @style($editMode || $codeMode ? 'color: var(--theme-muted-text-color);' : 'background-color: var(--theme-accent); color: #fff;')
+                        wire:click="setCodeMode(false)"
+                        @style($codeMode ? 'color: var(--theme-muted-text-color);' : 'background-color: var(--theme-accent); color: #fff;')
                     >
                         {{ __('Preview') }}
                     </button>
                     <button
                         type="button"
                         class="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-                        wire:click="setEditMode(true)"
-                        @style($editMode ? 'background-color: var(--theme-accent); color: #fff;' : 'color: var(--theme-muted-text-color);')
-                    >
-                        <i class="fa-solid fa-pen-to-square mr-1 text-[10px]"></i>
-                        {{ __('Edit') }}
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-                        wire:click="setCodeMode"
+                        wire:click="setCodeMode(true)"
                         @style($codeMode ? 'background-color: var(--theme-accent); color: #fff;' : 'color: var(--theme-muted-text-color);')
                     >
                         <i class="fa-solid fa-code mr-1 text-[10px]"></i>
@@ -82,12 +91,15 @@
         </div>
 
         <div @class([
-            'grid gap-5',
-            'lg:grid-cols-[1fr_minmax(280px,360px)]' => $editMode,
+            'gap-5',
+            'flex min-h-0 flex-1 flex-col' => $codeMode,
+            'grid' => ! $codeMode,
         ])>
             @if ($codeMode)
                 <x-ui.card
-                    class="min-w-0 p-8 sm:p-10 lg:col-span-2"
+                    :padding="'none'"
+                    tone="soft"
+                    class="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden p-4 sm:p-5"
                     x-data="{
                         downloadIndexHtml() {
                             const blob = new Blob([$refs.siteExportCode.value], { type: 'text/html;charset=utf-8' });
@@ -99,21 +111,23 @@
                         },
                     }"
                 >
-                    <div class="flex flex-col items-center justify-center gap-4 text-center">
-                        <p class="text-sm font-semibold font-mono" style="color: var(--theme-header-text-color);">index.html</p>
-                        <p class="max-w-md text-xs" style="color: var(--theme-muted-text-color);">
-                            {{ __('Download your site as a single HTML file with image links included.') }}
-                        </p>
+                    <div class="mb-3 flex shrink-0 justify-end border-b pb-3" style="border-color: rgba(var(--theme-border-color-rgb), 0.55);">
                         <x-ui.button
                             type="button"
                             size="sm"
+                            class="shrink-0"
                             x-on:click="downloadIndexHtml()"
                         >
-                            <i class="fa-solid fa-download text-[11px]"></i>
-                            {{ __('Download index.html') }}
+                            {{ __('Export') }}
                         </x-ui.button>
                     </div>
-                    <textarea x-ref="siteExportCode" class="sr-only" readonly tabindex="-1" aria-hidden="true">{{ $exportHtml }}</textarea>
+                    <textarea
+                        x-ref="siteExportCode"
+                        readonly
+                        spellcheck="false"
+                        class="website-code-export block min-h-[12rem] w-full min-w-0 flex-1 resize-none overflow-auto rounded-lg border p-3 font-mono text-xs leading-relaxed outline-none focus:ring-2 focus:ring-[color:var(--theme-accent)]"
+                        aria-label="{{ __('Exported HTML source') }}"
+                    >{{ $exportHtml }}</textarea>
                 </x-ui.card>
             @else
             <x-ui.card class="overflow-hidden border-0 p-3 shadow-sm sm:p-4" style="background: rgba(var(--theme-border-color-rgb), 0.2);">
@@ -166,19 +180,15 @@
             </div>
         </x-ui.card>
             @endif
-
-            @if ($editMode)
-                <x-ui.card class="max-h-[calc(75vh+4rem)] overflow-y-auto p-4 sm:p-5">
-                    <p class="mb-4 text-sm" style="color: var(--theme-muted-text-color);">
-                        {{ __('Update copy here — the preview on the left refreshes as you type. Save to keep changes.') }}
-                    </p>
-                    @include('appwebsitebuilder::partials.website-content-editor')
-                </x-ui.card>
-            @endif
         </div>
     </div>
 
     <style>
+        .website-code-export {
+            border-color: rgba(var(--theme-border-color-rgb), 0.65);
+            background-color: var(--theme-surface-overlay);
+            color: var(--theme-header-text-color);
+        }
         [x-cloak]{display:none!important}
         .preview-device-frame[data-device="mobile"] .lp-nav-desktop { display: none !important; }
         .preview-device-frame[data-device="mobile"] .lp-nav-toggle { display: inline-flex !important; }

@@ -119,6 +119,31 @@ class AgencyOnboarding
         return route('portal.onboarding');
     }
 
+    /**
+     * Portal destination after switching workspace — never the admin panel.
+     */
+    public function portalHomeRedirectPath(User $user): string
+    {
+        if (! $this->isComplete($user)) {
+            return route('portal.onboarding');
+        }
+
+        if (\Illuminate\Support\Facades\Route::has('portal.dashboard')) {
+            return route('portal.dashboard');
+        }
+
+        $project = $this->activeProject($user);
+
+        if ($project !== null) {
+            return route(
+                $this->launchRoute($user, $project),
+                $this->launchRouteParameters($user, $project),
+            );
+        }
+
+        return route('portal.agents.social.overview');
+    }
+
     public function hasPortalProjectOnboardingAccess(User $user): bool
     {
         if ($user->isSuperAdmin()) {
@@ -158,29 +183,21 @@ class AgencyOnboarding
         }
 
         $allAgents = array_keys(AgentCatalog::all());
-        $project = $this->activeProject($user);
+        $selected = $this->projectSelectedByUser($user);
 
-        if ($project !== null && ! $project->isSetupComplete()) {
-            return;
-        }
-
-        if ($project?->isSetupComplete()) {
-            $enabled = array_values(array_filter((array) $project->enabled_agents));
-            $merged = array_values(array_unique(array_merge($enabled, $allAgents)));
-
-            if ($merged !== $enabled) {
-                $project->forceFill(['enabled_agents' => $merged])->save();
+        if ($selected !== null && ! $selected->isSetupComplete()) {
+            if ($this->isActivelyOnboardingProject($user, $selected)) {
+                return;
             }
 
             return;
         }
 
-        $hasCompletedProject = AgencyProject::query()
-            ->where('owner_user_id', $user->id)
-            ->whereNotNull('setup_completed_at')
-            ->exists();
+        if ($selected?->isSetupComplete()) {
+            return;
+        }
 
-        if ($hasCompletedProject) {
+        if ($this->latestCompletedProject($user) !== null) {
             return;
         }
 
@@ -258,15 +275,39 @@ class AgencyOnboarding
 
     public function activeProject(User $user): ?AgencyProject
     {
-        if ($user->active_agency_project_id) {
-            $project = AgencyProject::query()
-                ->whereKey($user->active_agency_project_id)
-                ->where('owner_user_id', $user->id)
-                ->first();
+        $selected = $this->projectSelectedByUser($user);
 
-            if ($project) {
-                return $project;
-            }
+        if ($selected === null) {
+            return $this->latestCompletedProject($user);
+        }
+
+        if ($selected->isSetupComplete()) {
+            return $selected;
+        }
+
+        if ($this->isActivelyOnboardingProject($user, $selected)) {
+            return $selected;
+        }
+
+        return $this->latestCompletedProject($user) ?? $selected;
+    }
+
+    public function projectSelectedByUser(User $user): ?AgencyProject
+    {
+        if (! $user->active_agency_project_id || ! Schema::hasTable('agency_projects')) {
+            return null;
+        }
+
+        return AgencyProject::query()
+            ->whereKey($user->active_agency_project_id)
+            ->where('owner_user_id', $user->id)
+            ->first();
+    }
+
+    public function latestCompletedProject(User $user): ?AgencyProject
+    {
+        if (! Schema::hasTable('agency_projects')) {
+            return null;
         }
 
         return AgencyProject::query()
@@ -274,6 +315,34 @@ class AgencyOnboarding
             ->whereNotNull('setup_completed_at')
             ->latest('setup_completed_at')
             ->first();
+    }
+
+    public function isActivelyOnboardingProject(User $user, AgencyProject $project): bool
+    {
+        if ($this->isAddingAdditionalProject()) {
+            return true;
+        }
+
+        if (! session('agency_onboarding_project_ready', false)) {
+            return false;
+        }
+
+        $projectId = (int) ($project->getKey() ?? 0);
+
+        if ($projectId <= 0) {
+            return false;
+        }
+
+        $sessionProjectId = (int) session('agency_onboarding_active_project_id', 0);
+        $draft = session('agency_onboarding_project_draft');
+        $draftId = is_array($draft) ? (int) ($draft['id'] ?? 0) : 0;
+
+        return $sessionProjectId === $projectId || $draftId === $projectId;
+    }
+
+    public function canSwitchBetweenProjects(User $user): bool
+    {
+        return $this->hasPortalProjectOnboardingAccess($user);
     }
 
     public function draftProject(User $user): ?AgencyProject
@@ -620,18 +689,40 @@ class AgencyOnboarding
     /**
      * @return list<string>
      */
+    public function defaultSetupSelectedAgents(): array
+    {
+        return array_keys(AgentCatalog::all());
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function resolveSetupSelectedAgents(?AgencyProject $project): array
+    {
+        $defaults = $this->defaultSetupSelectedAgents();
+
+        if ($project === null) {
+            return $defaults;
+        }
+
+        $stored = array_values(array_filter((array) $project->enabled_agents));
+
+        return $stored !== [] ? array_values(array_intersect($stored, $defaults)) : $defaults;
+    }
+
+    /**
+     * @return list<string>
+     */
     public function enabledAgentsForProject(User $user): array
     {
         if ($user->isSuperAdmin()) {
             $this->ensureSuperAdminWorkspace($user);
-
-            return array_keys(AgentCatalog::all());
         }
 
         $project = $this->activeProject($user);
 
         if ($project === null) {
-            return ['social'];
+            return $this->defaultSetupSelectedAgents();
         }
 
         $enabled = array_values(array_filter((array) $project->enabled_agents));
@@ -657,11 +748,11 @@ class AgencyOnboarding
             return false;
         }
 
-        if ($user->isSuperAdmin()) {
-            return true;
+        if (! $user->hasActivePlan() && ! $user->isSuperAdmin()) {
+            return false;
         }
 
-        return $user->hasActivePlan();
+        return in_array($agentKey, $this->enabledAgentsForProject($user), true);
     }
 
     public function launchRoute(User $user, AgencyProject $project): string
@@ -861,6 +952,41 @@ class AgencyOnboarding
         session()->forget('agency_onboarding_adding_project');
     }
 
+    /**
+     * @return array{variant: 'full'|'additional', current: int}
+     */
+    public function stepperForPage(User $user, string $page): array
+    {
+        if ($this->isAddingAdditionalProject()) {
+            return [
+                'variant' => 'additional',
+                'current' => match ($page) {
+                    'setup' => 2,
+                    default => 1,
+                },
+            ];
+        }
+
+        return [
+            'variant' => 'full',
+            'current' => match ($page) {
+                'plan' => 1,
+                'project' => 2,
+                'setup' => 3,
+                default => 1,
+            },
+        ];
+    }
+
+    public function projectStepBackUrl(User $user): string
+    {
+        if ($this->isAddingAdditionalProject()) {
+            return route('portal.projects.create.cancel');
+        }
+
+        return route('portal.onboarding.plan');
+    }
+
     public function shouldShowUserSidebarSection(string $sectionKey, ?User $user = null): bool
     {
         $user ??= auth()->user();
@@ -943,6 +1069,7 @@ class AgencyOnboarding
             'portal.onboarding.setup',
             'portal.projects.switch',
             'portal.projects.create',
+            'portal.projects.create.cancel',
             'portal.packages',
             'payment.*',
             'login',
@@ -968,7 +1095,17 @@ class AgencyOnboarding
             return true;
         }
 
+        if ($request->routeIs('websites.published.subdomain', 'websites.published.show')) {
+            return true;
+        }
+
         if ($request->is('admin', 'admin/*')) {
+            return true;
+        }
+
+        $publishPrefix = trim((string) config('modules.appwebsitebuilder.publish_path_prefix', 'sites'), '/');
+
+        if ($publishPrefix !== '' && $request->is($publishPrefix, $publishPrefix.'/*')) {
             return true;
         }
 

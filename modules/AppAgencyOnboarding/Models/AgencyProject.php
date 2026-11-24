@@ -2,12 +2,16 @@
 
 namespace Modules\AppAgencyOnboarding\Models;
 
+use Database\Factories\AgencyProjectFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\AdminUser\Models\User;
 
 class AgencyProject extends Model
 {
+    /** @use HasFactory<\Database\Factories\AgencyProjectFactory> */
+    use HasFactory;
     protected $table = 'agency_projects';
 
     protected $fillable = [
@@ -40,6 +44,11 @@ class AgencyProject extends Model
     public function isSetupComplete(): bool
     {
         return $this->setup_completed_at !== null;
+    }
+
+    protected static function newFactory(): AgencyProjectFactory
+    {
+        return AgencyProjectFactory::new();
     }
 
     public function initialLetter(): string

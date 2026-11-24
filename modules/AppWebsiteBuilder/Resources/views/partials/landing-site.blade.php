@@ -18,6 +18,24 @@
     $highlights = collect($sections)->first(fn ($s) => strtolower((string) data_get($s, 'type')) === 'highlights') ?? [];
     $faq = collect($sections)->first(fn ($s) => strtolower((string) data_get($s, 'type')) === 'faq') ?? [];
     $contact = collect($sections)->first(fn ($s) => strtolower((string) data_get($s, 'type')) === 'contact') ?? [];
+    $footer = collect($sections)->first(fn ($s) => strtolower((string) data_get($s, 'type')) === 'footer') ?? [];
+    $footerTagline = trim((string) data_get($footer, 'tagline', ''));
+    if ($footerTagline === '') {
+        $footerTagline = $tagline;
+    }
+    $footerExploreHeading = trim((string) data_get($footer, 'explore_heading', ''));
+    if ($footerExploreHeading === '') {
+        $footerExploreHeading = __('Explore');
+    }
+    $footerExploreSubheading = trim((string) data_get($footer, 'explore_subheading', ''));
+    $footerConnectHeading = trim((string) data_get($footer, 'connect_heading', ''));
+    if ($footerConnectHeading === '') {
+        $footerConnectHeading = __('Connect');
+    }
+    $footerFacebookUrl = trim((string) data_get($footer, 'facebook_url', ''));
+    $footerInstagramUrl = trim((string) data_get($footer, 'instagram_url', ''));
+    $footerLinkedinUrl = trim((string) data_get($footer, 'linkedin_url', ''));
+    $footerCopyrightText = \Modules\AppWebsiteBuilder\Support\WebsiteContentForm::footerCopyrightTextForForm($footer, $siteName);
 
     $imageFallbacks = \Modules\AppWebsiteBuilder\Support\WebsiteLandingAssets::landingImageFallbacks(
         $content,
@@ -69,7 +87,13 @@
     }
 
     $templateKey = (string) ($layout['template_key'] ?? $templateIdFromContent ?: 'default');
-    $sectionOrder = \Modules\AppWebsiteBuilder\Support\WebsiteAiLayout::canonicalBodySectionOrder();
+    if (array_key_exists('body_section_order', $content) && is_array($content['body_section_order'])) {
+        $sectionOrder = $content['body_section_order'];
+    } else {
+        $sectionOrder = \Modules\AppWebsiteBuilder\Support\WebsiteAiLayout::canonicalBodySectionOrder();
+    }
+
+    $showHero = (bool) ($content['show_hero'] ?? true);
 
     $theme = is_array($content['theme'] ?? null) ? $content['theme'] : [];
     $themeCssVars = $isPromptSite && $theme !== []
@@ -105,13 +129,12 @@
         $landingClasses .= ' bg-white';
     }
 
-    $navLinks = [
-        ['href' => '#home', 'label' => __('Home')],
-        ['href' => '#about', 'label' => __('About')],
-        ['href' => '#services', 'label' => __('Services')],
-        ['href' => '#faq', 'label' => __('FAQ')],
-        ['href' => '#contact', 'label' => __('Contact')],
-    ];
+    $navLinks = \Modules\AppWebsiteBuilder\Support\WebsiteContentForm::navLinksFromStored($content);
+    $navCta = trim((string) data_get($content, 'nav_cta_text', ''));
+
+    if ($navCta === '') {
+        $navCta = $heroCta;
+    }
 @endphp
 
 @include('appwebsitebuilder::partials.landing.responsive-styles')
@@ -130,7 +153,9 @@
 >
     @include('appwebsitebuilder::partials.landing.nav')
 
-    @include('appwebsitebuilder::partials.landing.hero')
+    @if ($showHero)
+        @include('appwebsitebuilder::partials.landing.hero')
+    @endif
 
     @foreach ($sectionOrder as $sectionKey)
         @switch ($sectionKey)
@@ -160,11 +185,14 @@
                         <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold text-white" style="background: {{ $brand }};">{{ strtoupper(substr($siteName, 0, 1)) }}</span>
                         <span class="text-lg font-bold">{{ $siteName }}</span>
                     </div>
-                    <p class="max-w-xs text-sm text-white/70">{{ $tagline }}</p>
+                    <p class="max-w-xs text-sm text-white/70">{{ $footerTagline }}</p>
                 </div>
                 <div class="lp-footer-links grid min-w-0 gap-6 text-sm">
                     <div>
-                        <p class="font-semibold text-white/90">{{ __('Explore') }}</p>
+                        <p class="font-semibold text-white/90">{{ $footerExploreHeading }}</p>
+                        @if ($footerExploreSubheading !== '')
+                            <p class="mt-1 text-xs text-white/55">{{ $footerExploreSubheading }}</p>
+                        @endif
                         <ul class="mt-2 space-y-1.5 text-white/65">
                             @foreach ($navLinks as $link)
                                 <li><a href="{{ $link['href'] }}" class="hover:text-white">{{ $link['label'] }}</a></li>
@@ -172,20 +200,29 @@
                         </ul>
                     </div>
                     <div>
-                        <p class="font-semibold text-white/90">{{ __('Connect') }}</p>
+                        <p class="font-semibold text-white/90">{{ $footerConnectHeading }}</p>
                         <ul class="mt-2 flex gap-3 text-white/80">
-                            <li><a href="#" class="hover:text-white" aria-label="Facebook"><i class="fa-brands fa-facebook"></i></a></li>
-                            <li><a href="#" class="hover:text-white" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a></li>
-                            <li><a href="#" class="hover:text-white" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a></li>
+                            @if ($footerFacebookUrl !== '')
+                                <li><a href="{{ $footerFacebookUrl }}" class="hover:text-white" aria-label="Facebook" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-facebook"></i></a></li>
+                            @else
+                                <li><span class="text-white/40" aria-label="Facebook"><i class="fa-brands fa-facebook"></i></span></li>
+                            @endif
+                            @if ($footerInstagramUrl !== '')
+                                <li><a href="{{ $footerInstagramUrl }}" class="hover:text-white" aria-label="Instagram" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-instagram"></i></a></li>
+                            @else
+                                <li><span class="text-white/40" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></span></li>
+                            @endif
+                            @if ($footerLinkedinUrl !== '')
+                                <li><a href="{{ $footerLinkedinUrl }}" class="hover:text-white" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-linkedin-in"></i></a></li>
+                            @else
+                                <li><span class="text-white/40" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></span></li>
+                            @endif
                         </ul>
                     </div>
                 </div>
             </div>
             <p class="mt-8 border-t border-white/10 pt-6 text-center text-xs text-white/50">
-                © {{ date('Y') }} {{ $siteName }}
-                @if (empty($publicMode))
-                    · {{ __('AI draft preview — not published') }}
-                @endif
+                {{ $footerCopyrightText }}
             </p>
         </div>
     </footer>

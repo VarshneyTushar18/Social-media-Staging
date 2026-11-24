@@ -121,6 +121,8 @@ class WebsiteAgentDashboard extends Component
                 ? __('Your site is live at :url', ['url' => $publicUrl])
                 : __('Your site is now published.'),
         );
+
+        $this->dispatch('close-publish-site-modal');
     }
 
     public function openPublishDomainModal(int $siteId, string $provider = 'godaddy'): void

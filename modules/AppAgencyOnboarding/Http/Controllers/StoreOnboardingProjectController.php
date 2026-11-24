@@ -15,29 +15,32 @@ class StoreOnboardingProjectController extends Controller
 
         abort_unless($user !== null && $onboarding->hasPortalProjectOnboardingAccess($user), 403);
 
+        $request->merge([
+            'name' => trim((string) $request->input('name', '')),
+            'website' => trim((string) $request->input('website', '')),
+            'industry' => trim((string) $request->input('industry', '')),
+        ]);
+
+        $requiredMessage = __('This field is required.');
+
         $validated = $request->validate(
             [
                 'name' => ['required', 'string', 'max:255'],
                 'website' => ['nullable', 'string', 'max:500'],
                 'industry' => ['required', 'string', 'max:120'],
             ],
-            [],
+            [
+                'name.required' => $requiredMessage,
+                'industry.required' => $requiredMessage,
+            ],
             [
                 'name' => __('project name'),
+                'industry' => __('industry'),
             ],
         );
 
-        $validated['name'] = trim($validated['name']);
-        $validated['website'] = isset($validated['website']) ? trim((string) $validated['website']) : null;
         $validated['website'] = $validated['website'] !== '' ? $validated['website'] : null;
-        $validated['industry'] = trim($validated['industry']) !== '' ? trim($validated['industry']) : 'ecommerce';
-
-        if ($validated['name'] === '') {
-            return redirect()
-                ->route('portal.onboarding.project')
-                ->withInput()
-                ->withErrors(['name' => __('Enter a project name before continuing.')]);
-        }
+        $validated['industry'] = $validated['industry'] !== '' ? $validated['industry'] : 'ecommerce';
 
         $onboarding->persistProjectFromOnboarding($user, $validated);
         $onboarding->clearAddingAdditionalProject();
